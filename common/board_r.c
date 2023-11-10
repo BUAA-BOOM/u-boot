@@ -460,7 +460,7 @@ static int should_load_env(void)
 static int initr_env(void)
 {
 	/* initialize environment */
-	if (should_load_env())
+	if (should_load_env()) {
 		env_relocate();
 	else
 		env_set_default(NULL, 0);
@@ -834,9 +834,10 @@ void board_init_r(gd_t *new_gd, ulong dest_addr)
 	for (i = 0; i < ARRAY_SIZE(init_sequence_r); i++)
 		init_sequence_r[i] += gd->reloc_off;
 #endif
-
+	debug("board_init_r 1\n");
 	if (initcall_run_list(init_sequence_r))
 		hang();
+	debug("board_init_r 2\n");
 
 	/* NOTREACHED - run_main_loop() does not return */
 	hang();

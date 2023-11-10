@@ -21,8 +21,8 @@
 #endif
 
 /* Allow ports to override the default behavior */
-static unsigned long do_bootelf_exec(ulong (*entry)(int, char * const[]),
-				     int argc, char *const argv[])
+static unsigned long do_bootelf_exec(ulong (*entry)(int, char * const[], void*, void*),
+				     int argc, char * const argv[])
 {
 	unsigned long ret;
 
@@ -30,7 +30,12 @@ static unsigned long do_bootelf_exec(ulong (*entry)(int, char * const[]),
 	 * pass address parameter as argv[0] (aka command name),
 	 * and all remaining args
 	 */
-	ret = entry(argc, argv);
+	unsigned char elf_buf[128];
+	for(int i = 0 ; i < 128 ; i++) {
+		elf_buf[i] = 0;
+	}
+	printf("do_bootelf_exec...\n");
+	ret = entry(argc, argv, elf_buf, NULL);
 
 	return ret;
 }
@@ -78,9 +83,12 @@ int do_bootelf(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	 * pass address parameter as argv[0] (aka command name),
 	 * and all remaining args
 	 */
+	printf("argc: %d, argv_addr: %08lx\n", argc, argv);
+	printf("argv: %08lx, %08lx, %08lx, %08lx\n", argv[0], argv[1], argv[2], argv[3]);
+	printf("argv0: %s\nargv1:%s\nargv2:%s\n", argv[0], argv[1], argv[2]);
 	rc = do_bootelf_exec((void *)addr, argc, argv);
 	if (rc != 0)
-		rcode = 1;
+		rcode = 1;	
 
 	printf("## Application terminated, rc = 0x%lx\n", rc);
 

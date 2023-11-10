@@ -99,6 +99,101 @@ int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	if (IS_ENABLED(CONFIG_SYS_HAS_SRAM)) {
 		bdinfo_print_num_l("sramstart", (ulong)bd->bi_sramstart);
 		bdinfo_print_num_l("sramsize", (ulong)bd->bi_sramsize);
+	print_bi_flash(bd);
+
+#if defined(CONFIG_SYS_SRAM_BASE)
+	print_num ("sram start",	(ulong)bd->bi_sramstart);
+	print_num ("sram size",		(ulong)bd->bi_sramsize);
+#endif
+
+	print_eth_ip_addr();
+	print_baudrate();
+
+	return 0;
+}
+
+#elif defined(CONFIG_MICROBLAZE)
+
+int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	bd_t *bd = gd->bd;
+
+	print_bi_dram(bd);
+	print_bi_flash(bd);
+#if defined(CONFIG_SYS_SRAM_BASE)
+	print_num("sram start     ",	(ulong)bd->bi_sramstart);
+	print_num("sram size      ",	(ulong)bd->bi_sramsize);
+#endif
+#if defined(CONFIG_CMD_NET) && !defined(CONFIG_DM_ETH)
+	print_eths();
+#endif
+	print_baudrate();
+	print_num("relocaddr", gd->relocaddr);
+	print_num("reloc off", gd->reloc_off);
+	print_num("fdt_blob", (ulong)gd->fdt_blob);
+	print_num("new_fdt", (ulong)gd->new_fdt);
+	print_num("fdt_size", (ulong)gd->fdt_size);
+
+	return 0;
+}
+
+#elif defined(CONFIG_M68K)
+
+int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	bd_t *bd = gd->bd;
+
+	print_bi_mem(bd);
+	print_bi_flash(bd);
+#if defined(CONFIG_SYS_INIT_RAM_ADDR)
+	print_num("sramstart",		(ulong)bd->bi_sramstart);
+	print_num("sramsize",		(ulong)bd->bi_sramsize);
+#endif
+#if defined(CONFIG_SYS_MBAR)
+	print_num("mbar",		bd->bi_mbar_base);
+#endif
+	print_mhz("cpufreq",		bd->bi_intfreq);
+	print_mhz("busfreq",		bd->bi_busfreq);
+#ifdef CONFIG_PCI
+	print_mhz("pcifreq",		bd->bi_pcifreq);
+#endif
+#ifdef CONFIG_EXTRA_CLOCK
+	print_mhz("flbfreq",		bd->bi_flbfreq);
+	print_mhz("inpfreq",		bd->bi_inpfreq);
+	print_mhz("vcofreq",		bd->bi_vcofreq);
+#endif
+	print_eth_ip_addr();
+	print_baudrate();
+
+	return 0;
+}
+
+#elif defined(CONFIG_MIPS) || defined(CONFIG_LA32R) 
+
+int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	print_std_bdinfo(gd->bd);
+	print_num("relocaddr", gd->relocaddr);
+	print_num("reloc off", gd->reloc_off);
+
+	return 0;
+}
+
+#elif defined(CONFIG_ARM)
+
+static int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc,
+			char * const argv[])
+{
+	bd_t *bd = gd->bd;
+
+	print_num("arch_number",	bd->bi_arch_number);
+	print_bi_boot_params(bd);
+	print_bi_dram(bd);
+
+#ifdef CONFIG_SYS_MEM_RESERVE_SECURE
+	if (gd->arch.secure_ram & MEM_RESERVE_SECURE_SECURED) {
+		print_num("Secure ram",
+			  gd->arch.secure_ram & MEM_RESERVE_SECURE_ADDR_MASK);
 	}
 	bdinfo_print_num_l("flashstart", (ulong)bd->bi_flashstart);
 	bdinfo_print_num_l("flashsize", (ulong)bd->bi_flashsize);

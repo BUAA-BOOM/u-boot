@@ -48,6 +48,8 @@ obj-$(CONFIG_SH_SDHI) += sh_sdhi.o
 obj-$(CONFIG_STM32_SDMMC2) += stm32_sdmmc2.o
 obj-$(CONFIG_JZ47XX_MMC) += jz_mmc.o
 obj-$(CONFIG_NEXELL_DWMMC) += nexell_dw_mmc.o
+obj-$(CONFIG_MMC_OCSDC)			+= ocsdc_mmc.o
+obj-$(CONFIG_MMC_OCSDC_AXI)     += ocsdc_axi.o
 
 # SDHCI
 obj-$(CONFIG_MMC_SDHCI)			+= sdhci.o

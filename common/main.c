@@ -47,9 +47,7 @@ void main_loop(void)
 		env_set("ver", version_string);  /* set version variable */
 
 	cli_init();
-
-	if (IS_ENABLED(CONFIG_USE_PREBOOT))
-		run_preboot_environment_command();
+	run_preboot_environment_command();
 
 	if (IS_ENABLED(CONFIG_UPDATE_TFTP))
 		update_tftp(0UL, NULL, NULL);

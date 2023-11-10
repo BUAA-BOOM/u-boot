@@ -1,0 +1,67 @@
+/dts-v1/;
+
+/ {
+    model = "loongson,generic";
+    compatible = "loongson,loongson3";
+    #address-cells = <1>;
+    #size-cells = <1>;
+
+	ext: ext {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+	};
+	
+	memory: memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x8000000>;
+	};
+
+	cpuintc: interrupt-controller {
+	compatible = "loongson,cpu-interrupt-controller";
+        interrupt-controller;
+		#interrupt-cells = <1>;
+	};
+
+	bus_clk: bus_clk {
+		compatible = "fixed-clock";
+        clock-frequency = <166666666>;
+		#clock-cells = <0>;
+	};
+
+	aliases {
+		console = &serial0;
+        serial = &serial0;
+		mmc0 = &mmc;
+	};
+
+	// serial0: serial@9fe40000 {
+	// 	compatible = "ns16550";
+	// 	reg = <0x9fe40000 0x1000>;
+    //     reg-offset = <0>;
+    //     reg-shift = <0>;
+    //     clocks = <&bus_clk>;
+    //     current-speed = <230400>;
+	// };
+	serial0: serial@0x1fe001e0 {
+        compatible = "ns16550a";
+        reg = < 0x1fe001e0  0x10>;
+        clock-frequency = <33000000>;
+        no-loopback-test;
+    };
+
+	spi: spi@0x1fd01000 {
+		compatible = "xlnx,xps-spi-2.00.a";
+		reg = < 0x1fd01000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		mmc: mmc@0 {
+			compatible = "mmc-spi-slot";
+			reg = <0>;
+			spi-max-frequency = <20000000>;
+			voltage-ranges = <3300 3300>;
+			disable-wp;
+		};
+	};
+};
+
+

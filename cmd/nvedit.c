@@ -318,6 +318,82 @@ int env_set(const char *varname, const char *varvalue)
 		return _do_env_set(0, 3, (char * const *)argv, H_PROGRAMMATIC);
 }
 
+/**
+ * Set an environment variable to an integer value
+ *
+ * @param varname	Environment variable to set
+ * @param value		Value to set it to
+ * @return 0 if ok, 1 on error
+ */
+int env_set_ulong(const char *varname, ulong value)
+{
+	/* TODO: this should be unsigned */
+	char *str = simple_itoa(value);
+
+	return env_set(varname, str);
+}
+
+/**
+ * Set an environment variable to an value in hex
+ *
+ * @param varname	Environment variable to set
+ * @param value		Value to set it to
+ * @return 0 if ok, 1 on error
+ */
+int env_set_hex(const char *varname, ulong value)
+{
+	char str[17];
+
+	sprintf(str, "%lx", value);
+	int ret = env_set(varname, str);
+	return ret;
+}
+
+ulong env_get_hex(const char *varname, ulong default_val)
+{
+	const char *s;
+	ulong value;
+	char *endp;
+
+	s = env_get(varname);
+	if (s)
+		value = simple_strtoul(s, &endp, 16);
+	if (!s || endp == s)
+		return default_val;
+
+	return value;
+}
+
+void eth_parse_enetaddr(const char *addr, uint8_t *enetaddr)
+{
+	char *end;
+	int i;
+
+	for (i = 0; i < 6; ++i) {
+		enetaddr[i] = addr ? simple_strtoul(addr, &end, 16) : 0;
+		if (addr)
+			addr = (*end) ? end + 1 : end;
+	}
+}
+
+int eth_env_get_enetaddr(const char *name, uint8_t *enetaddr)
+{
+	eth_parse_enetaddr(env_get(name), enetaddr);
+	return is_valid_ethaddr(enetaddr);
+}
+
+int eth_env_set_enetaddr(const char *name, const uint8_t *enetaddr)
+{
+	char buf[ARP_HLEN_ASCII + 1];
+
+	if (eth_env_get_enetaddr(name, (uint8_t *)buf))
+		return -EEXIST;
+
+	sprintf(buf, "%pM", enetaddr);
+
+	return env_set(name, buf);
+}
+
 #ifndef CONFIG_SPL_BUILD
 static int do_env_set(struct cmd_tbl *cmdtp, int flag, int argc,
 		      char *const argv[])
