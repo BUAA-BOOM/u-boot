@@ -109,14 +109,6 @@ Elf32_Sym *sym32;
 Elf64_Sym *sym64;
 uint32_t type_freq[256];
 
-void print_type_freq()
-{
-	for (int i = 0; i < 256; i++)
-	{
-		if (type_freq[i])
-			printf("freq %d : %d\n", i, type_freq[i]);
-	}
-}
 
 struct mips_reloc
 {
@@ -228,13 +220,6 @@ static void output_uint(uint8_t **buf, uint64_t val)
 		tmp |= !!val << 7;
 		*(*buf)++ = tmp;
 	} while (val);
-}
-
-static int compare_relocs(const void *a, const void *b)
-{
-	const struct mips_reloc *ra = a, *rb = b;
-
-	return ra->offset - rb->offset;
 }
 
 int main(int argc, char *argv[])
@@ -356,7 +341,7 @@ int main(int argc, char *argv[])
 
 		if(!strcmp(sh_name, ".got")) {
 			shdr_got = shdr32 + i;
-			printf("got is located in %x with size %d.\n",shdr_got->sh_addr,shdr_got->sh_size);
+			printf("got is located in %p with size %d.\n",shdr_got->sh_addr,shdr_got->sh_size);
 			continue;
 		}
 
@@ -485,7 +470,7 @@ int main(int argc, char *argv[])
 	/* Ensure the relocs didn't overflow the .rel section */
 	rel_size = shdr_field(i_rel_shdr, sh_size);
 	rel_actual_size = buf - buf_start;
-	printf("rel_size is 0x%x, actual is 0x%x\n", rel_size, rel_actual_size);
+	printf("rel_size is 0x%lx, actual is 0x%lx\n", rel_size, rel_actual_size);
 	if (rel_actual_size > rel_size)
 	{
 		fprintf(stderr, "Relocations overflow available space of 0x%lx (required 0x%lx)!\n",
@@ -503,7 +488,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Failed to msync: %d\n", errno);
 		goto out_free_relocs;
 	}
-	print_type_freq();
 
 out_free_relocs:
 	free(relocs);

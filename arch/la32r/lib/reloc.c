@@ -136,7 +136,7 @@ static void apply_reloc(unsigned int type, void *addr, long off, long sym, long*
 		rela_stack_pop(&op1,rela_stack,rela_stack_top);
 		if ((op1 & ~0x7ff) &&
 			(op1 & ~0x7ff) != ~0x7ff) {
-			panic("1: op1 = 0x%x overflow! @0x%x\n",op1,addr);
+			panic("1: op1 = 0x%x overflow! @0x%p\n",op1,addr);
 		}
 		*(uint32_t *)addr = ((*(uint32_t *)addr) & (~0x3ffc00)) | ((op1 & 0xfff) << 10);
 		break;

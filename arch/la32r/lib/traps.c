@@ -68,7 +68,7 @@ static void show_regs(const struct Trapframe *regs)
 
 void do_reserved(const struct Trapframe *regs)
 {
-	printf("\nOoops LA32R Processor cannot handle exception code %x (subcode: %x)\n",(regs->estat >> 16) & 0x3f,(regs->estat >> 22) & 0x1ff);
+	printf("\nOoops LA32R Processor cannot handle exception code %lx (subcode: %lx)\n",(regs->estat >> 16) & 0x3f,(regs->estat >> 22) & 0x1ff);
 	show_regs(regs);
 	hang();
 }
@@ -87,13 +87,13 @@ void do_ejtag_debug(const struct pt_regs *regs)
 	//        field, depc, debug);
 }
 
-static void set_handler(unsigned long offset, void *addr, unsigned long size)
-{
-	unsigned long ebase = gd->irq_sp;
+// static void set_handler(unsigned long offset, void *addr, unsigned long size)
+// {
+// 	unsigned long ebase = gd->irq_sp;
 
-	memcpy((void *)(ebase + offset), addr, size);
-	flush_cache(ebase + offset, size);
-}
+// 	memcpy((void *)(ebase + offset), addr, size);
+// 	flush_cache(ebase + offset, size);
+// }
 
 void trap_init(ulong reloc_addr)
 {
