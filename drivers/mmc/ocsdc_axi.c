@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <command.h>
+#include <asm/io.h>
 #include <dm.h>
 #include <dm/device_compat.h>
 #include <linux/delay.h>
@@ -99,7 +100,8 @@ struct sdc_regs {
     volatile uint32_t res_54;
     volatile uint32_t res_58;
     volatile uint32_t res_5c;
-    volatile uint64_t dma_addres;
+    volatile uint32_t dma_addres;
+    volatile uint32_t dma_addres_high;
 };
 
 struct sdc_priv {
@@ -149,6 +151,7 @@ static int sdc_finish(struct sdc_priv * dev, struct mmc_cmd * cmd) {
             break;
         }
     }
+    printf("e-0\n");
     return -1;
 }
 
@@ -169,22 +172,26 @@ static int sdc_data_finish(struct sdc_priv * dev) {
     dev->regs->cmd_int_status = 0;
     while (dev->regs->software_reset != 0) {}
 
+    printf("e-1\n");
     return -1;
 }
 
 static int sdc_setup_data_xfer(struct sdc_priv * dev, struct mmc * mmc, struct mmc_data * data) {
-    uint64_t addr = (uint64_t)(data->flags & MMC_DATA_READ ? data->dest : data->src);
+    uint32_t addr = (uint32_t)(data->flags & MMC_DATA_READ ? data->dest : data->src);
+    printf("dma addr v:0x%08x p:", addr);
 
-    if (addr & 3) return -1;
-    if (data->blocksize & 3) return -1;
-    if (data->blocksize < 4) return -1;
-    if (data->blocksize > 0x1000) return -1;
-    if (data->blocks > 0x10000) return -1;
-    if (addr + data->blocksize * data->blocks > ((uint64_t)1 << dev->dma_addr_bits)) return -1;
-
-    uint64_t timeout = (uint64_t)data->blocks * data->blocksize * 8 / mmc->bus_width;
-    timeout += (uint64_t)mmc->clock / 1000 * data->blocks;
-    timeout += (uint64_t)mmc->clock / 100; // 10ms
+    if (addr & 3) {printf("e-2\n");return -1;}
+    if (data->blocksize & 3) {printf("e-3\n");return -1;}
+    if (data->blocksize < 4) {printf("e-4\n");return -1;}
+    if (data->blocksize > 0x1000) {printf("e-5\n");return -1;}
+    if (data->blocks > 0x10000) {printf("e-6\n");return -1;}
+    // if (addr + data->blocksize * data->blocks > ((uint64_t)1 << dev->dma_addr_bits)) {printf("e-7\n");return -1;}
+    flush_dcache_range(addr, addr + data->blocksize * data->blocks);
+    addr = virt_to_phys((void*)addr);
+    printf("0x%08x\n", addr);
+    uint32_t timeout = (uint32_t)data->blocks * data->blocksize * 8 / mmc->bus_width;
+    timeout += (uint32_t)mmc->clock / 1000 * data->blocks;
+    timeout += (uint32_t)mmc->clock / 100; // 10ms
     if (timeout > 0xffffff) timeout = 0;
 
     dev->regs->dma_addres = addr;
@@ -205,6 +212,7 @@ static int sdc_probe(struct udevice * udev) {
     fdt_addr_t addr = dev_read_addr(udev);
     if (addr == FDT_ADDR_T_NONE) {
         dev_err(udev, "failed to parse device address\n");
+        printf("e-8\n");
         return -EINVAL;
     }
     priv->regs = (struct sdc_regs *)addr;
@@ -275,7 +283,7 @@ static int sdc_send_cmd(struct udevice * udev, struct mmc_cmd * cmd, struct mmc_
         struct sdc_plat * plat = dev_get_plat(udev);
         if (data->flags & MMC_DATA_READ ) command |= 1 << 5;
         if (data->flags & MMC_DATA_WRITE) command |= 1 << 6;
-        if (sdc_setup_data_xfer(dev, &plat->mmc, data) < 0) return -1;
+        if (sdc_setup_data_xfer(dev, &plat->mmc, data) < 0) {printf("e-9\n");return -1;}
         xfer = 1;
     }
 
@@ -283,8 +291,8 @@ static int sdc_send_cmd(struct udevice * udev, struct mmc_cmd * cmd, struct mmc_
     dev->regs->cmd_timeout = CMD_TIMEOUT;
     dev->regs->argument = cmd->cmdarg;
 
-    if (sdc_finish(dev, cmd) < 0) return -1;
-    if (xfer && sdc_data_finish(dev) < 0) return -1;
+    if (sdc_finish(dev, cmd) < 0) {printf("e-10\n");return -1;}
+    if (xfer && sdc_data_finish(dev) < 0) {printf("e-11\n");return -1;}
 
     return 0;
 }
