@@ -5,9 +5,14 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
+#include <env.h>
 #include <image.h>
 #include <fdt_support.h>
+#include <lmb.h>
+#include <log.h>
 #include <asm/addrspace.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -245,7 +250,7 @@ static int boot_reloc_fdt(bootm_headers_t *images)
 #if CONFIG_IS_ENABLED(LA32R_BOOT_FDT) && CONFIG_IS_ENABLED(OF_LIBFDT)
 int arch_fixup_fdt(void *blob)
 {
-	u64 mem_start = virt_to_phys((void *)gd->bd->bi_memstart);
+	u64 mem_start = virt_to_phys((void *)gd->ram_base);
 	u64 mem_size = gd->ram_size;
 
 	return fdt_fixup_memory_banks(blob, &mem_start, &mem_size, 1);

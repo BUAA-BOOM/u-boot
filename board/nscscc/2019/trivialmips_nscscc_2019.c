@@ -2,6 +2,7 @@
 #include <common.h>
 #include <linux/io.h>
 #include <div64.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 

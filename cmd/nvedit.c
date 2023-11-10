@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <malloc.h>
 #include <mapmem.h>
+#include <net.h>
 #include <asm/global_data.h>
 #include <linux/bitops.h>
 #include <u-boot/crc.h>
@@ -325,13 +326,13 @@ int env_set(const char *varname, const char *varvalue)
  * @param value		Value to set it to
  * @return 0 if ok, 1 on error
  */
-int env_set_ulong(const char *varname, ulong value)
-{
-	/* TODO: this should be unsigned */
-	char *str = simple_itoa(value);
+// int env_set_ulong(const char *varname, ulong value)
+// {
+// 	/* TODO: this should be unsigned */
+// 	char *str = simple_itoa(value);
 
-	return env_set(varname, str);
-}
+// 	return env_set(varname, str);
+// }
 
 /**
  * Set an environment variable to an value in hex
@@ -340,29 +341,29 @@ int env_set_ulong(const char *varname, ulong value)
  * @param value		Value to set it to
  * @return 0 if ok, 1 on error
  */
-int env_set_hex(const char *varname, ulong value)
-{
-	char str[17];
+// int env_set_hex(const char *varname, ulong value)
+// {
+// 	char str[17];
 
-	sprintf(str, "%lx", value);
-	int ret = env_set(varname, str);
-	return ret;
-}
+// 	sprintf(str, "%lx", value);
+// 	int ret = env_set(varname, str);
+// 	return ret;
+// }
 
-ulong env_get_hex(const char *varname, ulong default_val)
-{
-	const char *s;
-	ulong value;
-	char *endp;
+// ulong env_get_hex(const char *varname, ulong default_val)
+// {
+// 	const char *s;
+// 	ulong value;
+// 	char *endp;
 
-	s = env_get(varname);
-	if (s)
-		value = simple_strtoul(s, &endp, 16);
-	if (!s || endp == s)
-		return default_val;
+// 	s = env_get(varname);
+// 	if (s)
+// 		value = simple_strtoul(s, &endp, 16);
+// 	if (!s || endp == s)
+// 		return default_val;
 
-	return value;
-}
+// 	return value;
+// }
 
 void eth_parse_enetaddr(const char *addr, uint8_t *enetaddr)
 {
@@ -376,23 +377,23 @@ void eth_parse_enetaddr(const char *addr, uint8_t *enetaddr)
 	}
 }
 
-int eth_env_get_enetaddr(const char *name, uint8_t *enetaddr)
-{
-	eth_parse_enetaddr(env_get(name), enetaddr);
-	return is_valid_ethaddr(enetaddr);
-}
+// int eth_env_get_enetaddr(const char *name, uint8_t *enetaddr)
+// {
+// 	eth_parse_enetaddr(env_get(name), enetaddr);
+// 	return is_valid_ethaddr(enetaddr);
+// }
 
-int eth_env_set_enetaddr(const char *name, const uint8_t *enetaddr)
-{
-	char buf[ARP_HLEN_ASCII + 1];
+// int eth_env_set_enetaddr(const char *name, const uint8_t *enetaddr)
+// {
+// 	char buf[ARP_HLEN_ASCII + 1];
 
-	if (eth_env_get_enetaddr(name, (uint8_t *)buf))
-		return -EEXIST;
+// 	if (eth_env_get_enetaddr(name, (uint8_t *)buf))
+// 		return -EEXIST;
 
-	sprintf(buf, "%pM", enetaddr);
+// 	sprintf(buf, "%pM", enetaddr);
 
-	return env_set(name, buf);
-}
+// 	return env_set(name, buf);
+// }
 
 #ifndef CONFIG_SPL_BUILD
 static int do_env_set(struct cmd_tbl *cmdtp, int flag, int argc,

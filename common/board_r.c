@@ -460,7 +460,7 @@ static int should_load_env(void)
 static int initr_env(void)
 {
 	/* initialize environment */
-	if (should_load_env()) {
+	if (should_load_env())
 		env_relocate();
 	else
 		env_set_default(NULL, 0);

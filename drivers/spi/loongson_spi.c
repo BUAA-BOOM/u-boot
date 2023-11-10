@@ -115,7 +115,7 @@ static int loongson_spi_xfer(struct udevice *slave, unsigned int bitlen,
     
     struct udevice *bus = dev_get_parent(slave);
 	struct loongson_spi_priv *priv = dev_get_priv(bus);
-        struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(slave);
+        struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(slave);
     int len = bitlen / 8;
     const u8* tx_buf = dout;
     u8* rx_buf = din;
@@ -249,6 +249,6 @@ U_BOOT_DRIVER(loongson_spi) = {
 	.id	= UCLASS_SPI,
 	.of_match   = loongson_spi_ids,
 	.ops	    = &loongson_spi_ops,
-	.priv_auto_alloc_size	= sizeof(struct loongson_spi_priv),
+	.priv_auto	= sizeof(struct loongson_spi_priv),
 	.probe   	= loongson_spi_probe,
 };
