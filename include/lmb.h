@@ -45,11 +45,11 @@ struct lmb_property {
 struct lmb_region {
 	unsigned long cnt;
 	unsigned long max;
-#if IS_ENABLED(CONFIG_LMB_USE_MAX_REGIONS)
-	struct lmb_property region[CONFIG_LMB_MAX_REGIONS];
-#else
-	struct lmb_property *region;
-#endif
+// #if IS_ENABLED(CONFIG_LMB_USE_MAX_REGIONS)
+	struct lmb_property region[8];
+// #else
+// 	struct lmb_property *region;
+// #endif
 };
 
 /**
