@@ -178,7 +178,7 @@ static int sdc_data_finish(struct sdc_priv * dev) {
 
 static int sdc_setup_data_xfer(struct sdc_priv * dev, struct mmc * mmc, struct mmc_data * data) {
     uint32_t addr = (uint32_t)(data->flags & MMC_DATA_READ ? data->dest : data->src);
-    printf("dma addr v:0x%08x p:", addr);
+    // printf("dma addr v:0x%08x p:", addr);
 
     if (addr & 3) {printf("e-2\n");return -1;}
     if (data->blocksize & 3) {printf("e-3\n");return -1;}
@@ -188,7 +188,7 @@ static int sdc_setup_data_xfer(struct sdc_priv * dev, struct mmc * mmc, struct m
     // if (addr + data->blocksize * data->blocks > ((uint64_t)1 << dev->dma_addr_bits)) {printf("e-7\n");return -1;}
     flush_dcache_range(addr, addr + data->blocksize * data->blocks);
     addr = virt_to_phys((void*)addr);
-    printf("0x%08x\n", addr);
+    // printf("0x%08x\n", addr);
     uint32_t timeout = (uint32_t)data->blocks * data->blocksize * 8 / mmc->bus_width;
     timeout += (uint32_t)mmc->clock / 1000 * data->blocks;
     timeout += (uint32_t)mmc->clock / 100; // 10ms
