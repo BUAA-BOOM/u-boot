@@ -121,6 +121,8 @@ static void sdc_set_clock(struct sdc_priv * priv, uint clock) {
     /* Min clock frequency should be 400KHz */
     //if (mmc->clk_disable) clock = 400000;
     if (clock < 400000) clock = 400000;
+    if (clock > 25000000) clock = 25000000;
+    printf("sdc_set_clock to %d\n", clock);
 
     unsigned clk_div = priv->clk_freq / (2 * clock);
     if (clk_div > 0x100) clk_div = 0x100;
@@ -148,6 +150,7 @@ static int sdc_finish(struct sdc_priv * dev, struct mmc_cmd * cmd) {
                 dev->acmd = cmd->cmdidx == MMC_CMD_APP_CMD;
                 return 0;
             }
+            printf("Status is %x\n", status);
             break;
         }
     }
@@ -226,8 +229,8 @@ static int sdc_probe(struct udevice * udev) {
     }
 
     cfg->name = udev->name;
-    cfg->f_min = priv->clk_freq / 0x200; /* maximum clock division 256 * 2 */
-    if (cfg->f_max == 0) cfg->f_max = priv->clk_freq / 2; /* minimum clock division 2 */
+    cfg->f_min = (priv->clk_freq / 0x200) < 400000 ? 400000 : (priv->clk_freq / 0x200); /* maximum clock division 256 * 2 */
+    if (cfg->f_max == 0) cfg->f_max = (priv->clk_freq / 2) > 25000000 ? 25000000 : (priv->clk_freq / 2); /* minimum clock division 2 */
     cfg->voltages = MMC_VDD_32_33 | MMC_VDD_33_34;
     if (cfg->host_caps == 0) cfg->host_caps = MMC_MODE_4BIT | MMC_MODE_HS;
     cfg->b_max = 0x10000;
@@ -264,10 +267,12 @@ static int sdc_get_cd(struct udevice * udev) {
 }
 
 static int sdc_send_cmd(struct udevice * udev, struct mmc_cmd * cmd, struct mmc_data * data) {
+    struct sdc_plat * plat = dev_get_plat(udev);
     struct sdc_priv * dev = dev_get_priv(udev);
-
-    int xfer = 0;
-    int command = cmd->cmdidx << 8;
+    int xfer, command;
+retry:
+    xfer = 0;
+    command = cmd->cmdidx << 8;
     if (cmd->resp_type & MMC_RSP_PRESENT) {
         if (cmd->resp_type & MMC_RSP_136)
             command |= 2;
@@ -280,7 +285,6 @@ static int sdc_send_cmd(struct udevice * udev, struct mmc_cmd * cmd, struct mmc_
     if (cmd->resp_type & MMC_RSP_OPCODE) command |= 1 << 4;
 
     if (data && (data->flags & (MMC_DATA_READ | MMC_DATA_WRITE)) && data->blocks) {
-        struct sdc_plat * plat = dev_get_plat(udev);
         if (data->flags & MMC_DATA_READ ) command |= 1 << 5;
         if (data->flags & MMC_DATA_WRITE) command |= 1 << 6;
         if (sdc_setup_data_xfer(dev, &plat->mmc, data) < 0) {printf("e-9\n");return -1;}
@@ -291,7 +295,12 @@ static int sdc_send_cmd(struct udevice * udev, struct mmc_cmd * cmd, struct mmc_
     dev->regs->cmd_timeout = CMD_TIMEOUT;
     dev->regs->argument = cmd->cmdarg;
 
-    if (sdc_finish(dev, cmd) < 0) {printf("e-10\n");return -1;}
+    if (sdc_finish(dev, cmd) < 0) {
+        printf("e-10\n");
+        plat->mmc.clock /= 2;
+        sdc_set_clock(dev, plat->mmc.clock);
+        goto retry;
+    }
     if (xfer && sdc_data_finish(dev) < 0) {printf("e-11\n");return -1;}
 
     return 0;

@@ -36,6 +36,7 @@
 #include <dm/device_compat.h>
 #include <linux/delay.h>
 #include <mmc.h>
+#include <log2.h>
 
 #define LITEX_PHY_CARDDETECT  0x00
 #define LITEX_PHY_CLOCKERDIV  0x04
@@ -87,19 +88,56 @@
 #define SDIRQ_CMD_DONE       8
 
 struct sdc_priv {
-	void *sdphy;
-	void *sdcore;
-	void *sdreader;
-	void *sdwriter;
-	void *sdirq;
+	volatile void *sdphy;
+	volatile void *sdcore;
+	volatile void *sdreader;
+	volatile void *sdwriter;
+	volatile void *sdirq;
 
 	unsigned int ref_clk;
 	unsigned int sd_clk;
 };
 
 #if CONFIG_IS_ENABLED(DM_MMC)
+
+static inline u32 litex_read(void* addr) {
+    return readl((volatile void*) addr);
+}
+
+static inline void litex_write(void* addr, u32 data)
+{
+	writel(data, (volatile void*) addr);
+}
+
 static int sdc_get_cd(struct udevice * udev) {
     return 1;
+}
+
+/* Set clock prescalar value based on the required clock in HZ */
+static void sdc_set_clock(struct sdc_priv * priv, uint clock) {
+    /* Min clock frequency should be 400KHz */
+    //if (mmc->clk_disable) clock = 400000;
+    if (clock < 400000) clock = 400000;
+	unsigned div = clock ? priv->ref_clk / clock : 256U;
+	div = roundup_pow_of_two(div);
+    div = div < 2 ? 2 : div;
+    div = div > 256 ? 256 : div;
+
+    unsigned clk_div = priv->clk_freq / (2 * clock);
+    if (clk_div > 0x100) clk_div = 0x100;
+    if (clk_div < 1) clk_div = 1;
+    printf("sd_clk_freq=%d: set to %d via div=%d\n",
+		clock, priv->ref_clk / div, div);
+	litex_write(priv->sdphy + LITEX_PHY_CLOCKERDIV, div);
+    priv->sd_clk = clock;
+}
+
+static void sdc_set_ios(struct udevice * udev)
+{
+    struct sdc_plat * plat = dev_get_plat(udev);
+    struct sdc_priv * dev = dev_get_priv(udev);
+    struct mmc * mmc = &plat->mmc;
+	sdc_set_clock(dev, mmc->clock);
 }
 
 #if CONFIG_IS_ENABLED(BLK)
