@@ -25,7 +25,20 @@ static unsigned long do_bootelf_exec(ulong (*entry)(int, char * const[], void*, 
 				     int argc, char * const argv[])
 {
 	unsigned long ret;
+	// char * bootparm_start = (char*)(0xa4f00000UL);
+	// int usage = 0;
+	// usage += 4 * (argc + 1);
+	// char ** bootparm_ptrs = bootparm_start;
+	// for(int i = 0 ; i < argc ; i++) {
+	// 	bootparm_ptrs[i] = bootparm_start + usage;
+	// 	usage += sprintf(bootparm_start + usage,"%s", argv[i]);
+	// }
+	// bootparm_ptrs[argc] = NULL;
+	// usage = ((usage + 32) & ~31);
+	// *(char **)(bootparm_start + usage) = NULL;
 
+	// printf("do_bootelf_exec... %x %x %x %x\n",argc, bootparm_ptrs, bootparm_start + usage, NULL);
+	// ret = entry(argc, bootparm_ptrs, bootparm_start + usage, NULL);
 	/*
 	 * pass address parameter as argv[0] (aka command name),
 	 * and all remaining args
