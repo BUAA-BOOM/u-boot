@@ -1871,6 +1871,13 @@ config CMD_PSTORE
 
 	  See doc/pstore.rst for more information.
 
+config CMD_PLAYMEDIA
+	bool "playmedia"
+	select SSCANF
+	help
+	  This provides basic access to the JPEG Decoder, FB and I2S Cotnroller.
+	  The main feature is to allow user playing an video
+
 if CMD_PSTORE
 
 config CMD_PSTORE_MEM_ADDR

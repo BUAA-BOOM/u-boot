@@ -7,7 +7,7 @@
 #include <command.h>
 #include <mapmem.h>
 #include <asm/cache.h>
-#include <bitops.h>
+#include <linux/bitops.h>
 
 struct decode_ip_ctl
 {
@@ -37,10 +37,9 @@ struct i2s_ip_ctl
 
 struct fb_ip_ctl
 {
+    volatile uint32_t conf;
+    volatile uint32_t status;
     volatile uint32_t addr;
-    volatile uint32_t ctrl;
-    volatile uint32_t iesr;
-    volatile uint32_t ccr;
 };
 
 /*
@@ -80,8 +79,6 @@ struct headerb
 {
     uint32_t frame_size[128];
 };
-static int play_num;   // Only be written by play thread
-static int decode_num; // Only be written by decode thread
 static int sample_perframe;
 static int fps;
 static struct i2s_ip_ctl *i2s_ctl;
@@ -114,7 +111,7 @@ static int play_one_frame(int fb_num)
     uint32_t vbuf_ptr = FRAMEBUFFER_START + FRAMEBUFFER_SIZE * fb_num;
     uint32_t abuf_ptr = ab_array[fb_num];
     i2s_play_one_frame(abuf_ptr);
-    fb_play_one_frame(fbuf_ptr);
+    fb_play_one_frame(vbuf_ptr);
     return 0;
 }
 
@@ -136,7 +133,7 @@ static int decode_one_frame(int frame_size,
     // 配置 decode ip 的地址
     decode_mmio->src = ((uint32_t)jpeg_file_ptr) & 0x1fffffff;
     decode_mmio->dst = FRAMEBUFFER_START + FRAMEBUFFER_SIZE * fb_num;
-    decode_mmio->stride = 1024;
+    decode_mmio->stride = 1280; // FIXED 1280x720p, but resolution might be various.
 
     // 配置开始 decode ip 的解码
     decode_mmio->iocen = 1; // 打开中断输出，清理旧的中断
@@ -165,13 +162,20 @@ static int get_next_frame_ptr(int init, void **binary)
 
 int wait_an_interrupt()
 {
+    uint32_t iters = 0;
     while(1) {
-        uint32_t irqs;
+        uint32_t etate, irqs;
         asm volatile(
-		"	csrrd	%0, csr_estat\n"
-		: "=r"(irqs) :: "memory");
-        irqs = (irqs >> 3) & 0x3;
+		"	csrrd	%0, 0x5\n"
+		: "=r"(etate) :: "memory");
+        irqs = (etate >> 3) & 0x3;
         if(irqs) return irqs;
+
+        iters++;
+        if((iters & 0xffff) == 0) {
+            printf("NIR%d,%x\n",iters, etate);
+            return 0;
+        }
     }
 }
 
@@ -207,7 +211,7 @@ static int mediaplayer(void *binary)
         } // 播放完成，退出
         int irq = wait_an_interrupt();
         if(irq & 0x1) {
-            // PLAY NEEDED
+            // I2S IRQ DRIVENED PLAY NEEDED
             if(fifo_size) {
                 play_one_frame(play_ptr++);
                 play_ptr &= 3;
@@ -221,12 +225,12 @@ static int mediaplayer(void *binary)
         if((irq & 0x2) && !finish_flag) {
             // DECODE OK
             if(fifo_size < 3) {
-                frame_size = get_next_frame_ptr(i == 0, &binary);
+                frame_size = get_next_frame_ptr(0, &binary);
                 if(frame_size == 0) {
                     finish_flag = 1;
                     continue;
                 }
-                decode_one_frame(decode_ptr++);
+                decode_one_frame(frame_size,binary,decode_ptr++);
                 decode_ptr &= 3;
                 fifo_size += 1;
             } else {
@@ -242,20 +246,26 @@ static int mediaplayer(void *binary)
 
 int do_playmedia(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
-	if(argc < 2) {
-		printf("Usage: playmedia [media_binary_location]\n");
+	if(argc < 3) {
+		printf("Usage: playmedia 0x[media_binary_addr] [fps]\n");
 		return 0;
 	}
 	uint32_t location;
 	sscanf(argv[1], "0x%x", &location);
+    sscanf(argv[2], "%d", &fps);
 	if(location < 0xa0000000) {
 		printf("Location should'nt be lower than 0xa0000000.\n");
 		return 0;
 	}
+    if(fps < 1 || fps > 25) {
+        printf("FPS should between [1,25]");
+    }
+    sample_perframe = 48000 / fps; // FIXED 48000 SAMPLING RATE.
 	return mediaplayer((void*)location);
 }
 
 U_BOOT_CMD(
 	playmedia,	7,	0,	do_playmedia,
-	"play a mjpeg file from a specified memory location.\n"
+	"play a mjpeg file from a specified memory location.\n",
+    "0x<addr> fps"
 );
