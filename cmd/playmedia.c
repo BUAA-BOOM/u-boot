@@ -56,8 +56,6 @@ struct fb_ip_ctl
 */
 #define FRAMEBUFFER_SIZE (2 * 1024 * 1024)
 #define FRAMEBUFFER_START (0x07800000)
-#define AUDIOBUFFER_SIZE (512 * 1024)
-#define AUDIOBUFFER_START (FRAMEBUFFER_START + 3 * FRAMEBUFFER_SIZE)
 /*
     File Format:
 
@@ -83,29 +81,43 @@ static int sample_perframe;
 static int fps;
 static struct i2s_ip_ctl *i2s_ctl;
 static struct fb_ip_ctl  *fb_ctl;
-static struct decode_ip_ctl *decode_mmio;
+static struct decode_ip_ctl *decode_ctl;
 static uint32_t ab_array[4];
 
 static void fb_play_one_frame(uint32_t fbuf_ptr) {
     fb_ctl->addr = fbuf_ptr;
+    fb_ctl->conf = BIT(0);
 }
-static void open_i2s_device() {
+
+static void open_i2s_device(void) {
     i2s_ctl->mm2s_ctrl = BIT(1);
-    while(i2s_ctl->mm2s_ctrl && BIT(1));
+    uint32_t iters=0;
+    while(i2s_ctl->mm2s_ctrl & BIT(1)) {
+        if((iters++) & 0xffff) {
+            printf("Open I2S STUCK %x", i2s_ctl->mm2s_ctrl);
+            i2s_ctl->mm2s_ctrl = 0;
+        }
+    }
     i2s_ctl->mm2s_ctrl = BIT(13) | (0x1 << 16) | (0x2 << 19);
     i2s_ctl->mm2s_multiplier = 512;
 }
-static void close_i2s_device() {
+
+static void close_i2s_device(void) {
     i2s_ctl->mm2s_ctrl = BIT(1);
-    while(i2s_ctl->mm2s_ctrl && BIT(1));
+    uint32_t iters=0;
+    while(i2s_ctl->mm2s_ctrl & BIT(1)){
+        if((iters++) & 0xffff) {
+            printf("Close I2S STUCK");
+            i2s_ctl->mm2s_ctrl = 0;
+        }
+    }
 }
+
 static void i2s_play_one_frame(uint32_t abuf_ptr) {
-    i2s_ctl->mm2s_period = (1 << 16) | (sample_perframe);
     i2s_ctl->mm2s_dmaaddr = abuf_ptr;
     i2s_ctl->mm2s_dmaaddr_msb = 0;
-    i2s_ctl->mm2s_channel_offset = sample_perframe / 2;
-    i2s_ctl->mm2s_ctrl |= BIT(0);
 }
+
 static int play_one_frame(int fb_num)
 {
     uint32_t vbuf_ptr = FRAMEBUFFER_START + FRAMEBUFFER_SIZE * fb_num;
@@ -126,19 +138,18 @@ static int decode_one_frame(int frame_size,
 {
     int vframe_size;
     vframe_size = frame_size;
-    printf("D%d\n", vframe_size);
 
-    decode_mmio->ctrl = 0x40000000;
+    decode_ctl->ctrl = 0x40000000;
 
     // 配置 decode ip 的地址
-    decode_mmio->src = ((uint32_t)jpeg_file_ptr) & 0x1fffffff;
-    decode_mmio->dst = FRAMEBUFFER_START + FRAMEBUFFER_SIZE * fb_num;
-    decode_mmio->stride = 1280; // FIXED 1280x720p, but resolution might be various.
+    decode_ctl->src = ((uint32_t)jpeg_file_ptr) & 0x1fffffff;
+    decode_ctl->dst = FRAMEBUFFER_START + FRAMEBUFFER_SIZE * fb_num;
+    decode_ctl->stride = 1280; // FIXED 1280x720p, but resolution might be various.
 
     // 配置开始 decode ip 的解码
-    decode_mmio->iocen = 1; // 打开中断输出，清理旧的中断
-    decode_mmio->ctrl  = 0x80000000 | vframe_size;
-    // printf("decoder_mmio %x %x %x\n", decode_mmio->src, decode_mmio->dst, decode_mmio->ctrl, decode_ptr);
+    decode_ctl->iocen = 1; // 打开中断输出，清理旧的中断
+    decode_ctl->ctrl  = 0x80000000 | vframe_size;
+    // printf("decoder_mmio %x %x %x\n", decode_ctl->src, decode_ctl->dst, decode_ctl->ctrl, decode_ptr);
 
     // 音频数据指针写入到音频指针缓冲区
     ab_array[fb_num] = ((uint32_t)(jpeg_file_ptr + vframe_size)) & 0x1fffffff;
@@ -148,32 +159,40 @@ static int decode_one_frame(int frame_size,
 // return 0 on finish.
 static int get_next_frame_ptr(int init, void **binary)
 {
-    static sub_frame_cnt;
+    static int sub_frame_cnt;
     static struct headerb *hdr_b;
-    if(init || sub_frame_cnt >= 127) {
+    if(init) {
         sub_frame_cnt = 0;
         hdr_b = *binary;
         *binary += 512;
     } else {
-        *binary += hdr_b->frame_size[sub_frame_cnt++];
+        uint32_t aframe_size = padding(sample_perframe * 4);
+        *binary += padding(hdr_b->frame_size[sub_frame_cnt++]) + aframe_size;
+    }
+    if(sub_frame_cnt >= 128) {
+        sub_frame_cnt = 0;
+        hdr_b = *binary;
+        *binary += 512;
     }
     return hdr_b->frame_size[sub_frame_cnt];
 }
 
-int wait_an_interrupt()
+static int wait_an_interrupt(int target_mask, int forever)
 {
     uint32_t iters = 0;
     while(1) {
-        uint32_t etate, irqs;
+        uint32_t estate, irqs;
         asm volatile(
 		"	csrrd	%0, 0x5\n"
-		: "=r"(etate) :: "memory");
-        irqs = (etate >> 3) & 0x3;
-        if(irqs) return irqs;
+		: "=r"(estate) :: "memory");
+        irqs = (estate >> 4) & target_mask;
+        if(irqs){
+            return irqs;
+        }
 
         iters++;
-        if((iters & 0xffff) == 0) {
-            printf("NIR%d,%x\n",iters, etate);
+        if((iters & 0xfffff) == 0 && !forever) {
+            printf("NIR%d,%x\n",iters, estate);
             return 0;
         }
     }
@@ -181,9 +200,10 @@ int wait_an_interrupt()
 
 static int mediaplayer(void *binary)
 {
-    int decode_ptr = 0, play_ptr = 0, finish_flag = 0, fifo_size = 0;
+    int decode_ptr = 0, play_ptr = 0, finish_flag = 0, fifo_size = 0, int_cnt = 1;
     int frame_size;
     // 初始化 I2S 控制器
+    printf("offset of MM2S_CTRL is %x\n", (uint32_t)(&i2s_ctl->mm2s_ctrl) - (uint32_t)i2s_ctl);
     open_i2s_device();
     // 先解码四帧填满
     for(int i = 0 ; i < 4 ; i++) {
@@ -193,12 +213,15 @@ static int mediaplayer(void *binary)
             break;
         }
         decode_one_frame(frame_size,binary,decode_ptr++);
-        wait_an_interrupt();
+        wait_an_interrupt(0x2, 1);
         decode_ptr &= 3;
         fifo_size++;
     }
     // 之后播放第一帧
     play_one_frame(play_ptr++);
+    i2s_ctl->mm2s_period = (2 << 16) | (sample_perframe * 2);
+    i2s_ctl->mm2s_ctrl = BIT(0) | BIT(13) | (0x1 << 16) | (0x2 << 19);
+    i2s_ctl->mm2s_channel_offset = sample_perframe * 1;
     play_ptr &= 3;
     fifo_size --;
     // FIFO_SIZE == 3, FULL.
@@ -209,22 +232,38 @@ static int mediaplayer(void *binary)
             printf("Play end!\n");
             break;
         } // 播放完成，退出
-        int irq = wait_an_interrupt();
+        int irq = wait_an_interrupt(0x3, 0);
         if(irq & 0x1) {
-            // I2S IRQ DRIVENED PLAY NEEDED
             if(fifo_size) {
-                play_one_frame(play_ptr++);
-                play_ptr &= 3;
-                fifo_size --;
+                // I2S IRQ DRIVENED PLAY NEEDED
+                i2s_ctl->mm2s_status = BIT(31); // DISABLE INTERRUPT
+                if((int_cnt++) & 1) {
+                    int_cnt &= 1;
+                    uint32_t estate;
+                    while(1){
+                        asm volatile(
+                            "	csrrd	%0, 0x5\n"
+                            : "=r"(estate) :: "memory");
+                        if(!(estate & (0x1 << 4))) break;
+                    }
+                } else {// Dosen't need to handle this in the real finish anymore.
+                    play_one_frame(play_ptr++);
+                    play_ptr &= 3;
+                    fifo_size --;
+                    iter = 0;
+                }
             } else {
                 // FIFO UNDER FLOW
                 iter++;
-                if((iter & 0xffff) == 0) printf("UF\n");
+                if((iter & 0xfff) == 0) printf("UF\n");
+                if((iter & 0xfff) == 0) irq |= 0x2;
+                // 强制继续播放
             }
         }
         if((irq & 0x2) && !finish_flag) {
             // DECODE OK
-            if(fifo_size < 3) {
+            if(fifo_size < 2) {
+                iter = 0;
                 frame_size = get_next_frame_ptr(0, &binary);
                 if(frame_size == 0) {
                     finish_flag = 1;
@@ -236,12 +275,13 @@ static int mediaplayer(void *binary)
             } else {
                 // FIFO OVER FLOW
                 iter++;
-                if((iter & 0xffff) == 0) printf("OF\n");
+                if((iter & 0xfffff) == 0) printf("OF\n");
             }
         }
     }
-    decode_mmio->iocen = 0; // 关闭中断输出，清理旧的中断
+    decode_ctl->iocen = 0; // 关闭中断输出，清理旧的中断
     close_i2s_device();
+    return 0;
 }
 
 int do_playmedia(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
@@ -261,6 +301,9 @@ int do_playmedia(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
         printf("FPS should between [1,25]");
     }
     sample_perframe = 48000 / fps; // FIXED 48000 SAMPLING RATE.
+    fb_ctl = (void*) 0x9d0d0000;
+    i2s_ctl = (void*) 0x9d0b0000;
+    decode_ctl = (void*) 0x9d0a0000;
 	return mediaplayer((void*)location);
 }
 
