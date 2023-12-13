@@ -82,7 +82,7 @@ static int fps;
 static struct i2s_ip_ctl *i2s_ctl;
 static struct fb_ip_ctl  *fb_ctl;
 static struct decode_ip_ctl *decode_ctl;
-static uint32_t ab_array[4];
+static uint32_t *ab_array[4];
 
 static void fb_play_one_frame(uint32_t fbuf_ptr) {
     fb_ctl->addr = fbuf_ptr;
@@ -152,7 +152,7 @@ static int decode_one_frame(int frame_size,
     // printf("decoder_mmio %x %x %x\n", decode_ctl->src, decode_ctl->dst, decode_ctl->ctrl, decode_ptr);
 
     // 音频数据指针写入到音频指针缓冲区
-    ab_array[fb_num] = ((uint32_t)(jpeg_file_ptr + vframe_size)) & 0x1fffffff;
+    ab_array[fb_num] = ((uint32_t)(jpeg_file_ptr + padding(vframe_size))) & 0x1fffffff;
     return 0;
 }
 
@@ -200,7 +200,7 @@ static int wait_an_interrupt(int target_mask, int forever)
 
 static int mediaplayer(void *binary)
 {
-    int decode_ptr = 0, play_ptr = 0, finish_flag = 0, fifo_size = 0, int_cnt = 1;
+    int decode_ptr = 0, play_ptr = 0, finish_flag = 0, fifo_size = 0, int_cnt = 0;
     int frame_size;
     // 初始化 I2S 控制器
     printf("offset of MM2S_CTRL is %x\n", (uint32_t)(&i2s_ctl->mm2s_ctrl) - (uint32_t)i2s_ctl);
@@ -237,15 +237,15 @@ static int mediaplayer(void *binary)
             if(fifo_size) {
                 // I2S IRQ DRIVENED PLAY NEEDED
                 i2s_ctl->mm2s_status = BIT(31); // DISABLE INTERRUPT
+                while(1) {
+                    uint32_t estate;
+                    asm volatile(
+                        "	csrrd	%0, 0x5\n"
+                        : "=r"(estate) :: "memory");
+                    if(!(estate & (0x1 << 4))) break;
+                }
                 if((int_cnt++) & 1) {
                     int_cnt &= 1;
-                    uint32_t estate;
-                    while(1){
-                        asm volatile(
-                            "	csrrd	%0, 0x5\n"
-                            : "=r"(estate) :: "memory");
-                        if(!(estate & (0x1 << 4))) break;
-                    }
                 } else {// Dosen't need to handle this in the real finish anymore.
                     play_one_frame(play_ptr++);
                     play_ptr &= 3;
