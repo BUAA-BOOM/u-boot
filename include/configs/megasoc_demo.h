@@ -24,7 +24,7 @@
 
 /* SDRAM Configuration (for final code, data, stack, heap) */
 #define CONFIG_SYS_SDRAM_BASE		0xA0000000
-#define CONFIG_SYS_SDRAM_SIZE		0x07800000	/* 120 Mbytes */
+#define CONFIG_SYS_SDRAM_SIZE		0x0F000000	/* 240 Mbytes */
 #define CONFIG_SYS_INIT_SP_ADDR		\
 	(CONFIG_SYS_SDRAM_BASE + CONFIG_SYS_SDRAM_SIZE - 0x1000)
 
