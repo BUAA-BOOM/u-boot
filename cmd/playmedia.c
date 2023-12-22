@@ -40,6 +40,9 @@ struct fb_ip_ctl
     volatile uint32_t conf;
     volatile uint32_t status;
     volatile uint32_t addr;
+    volatile uint32_t length;
+    volatile uint32_t hcfg[4];
+    volatile uint32_t vcfg[4];
 };
 
 /*
@@ -87,7 +90,7 @@ static uint32_t *ab_array[4];
 
 static void fb_play_one_frame(uint32_t fbuf_ptr) {
     fb_ctl->addr = fbuf_ptr;
-    fb_ctl->conf = BIT(0);
+    fb_ctl->status = BIT(1);
 }
 
 static void open_i2s_device(void) {
@@ -285,7 +288,7 @@ static int mediaplayer(void *binary)
     return 0;
 }
 
-int do_playmedia(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+static int do_playmedia(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	if(argc < 3) {
 		printf("Usage: playmedia 0x[media_binary_addr] [fps]\n");
@@ -313,3 +316,126 @@ U_BOOT_CMD(
 	"play a mjpeg file from a specified memory location.\n",
     "0x<addr> fps"
 );
+struct vcfg_t{
+    uint32_t hcfg[4];
+    uint32_t vcfg[4];
+};
+static uint32_t support_resolution[] = {1080,720,480}; // 数组需保持有序
+static struct vcfg_t support_cfg[] = {
+    {{32,80,1920,48},{5,6,1080,3}},
+    {{32,80,1280,48},{5,6,720 ,3}},
+    {{32,80,640 ,48},{5,6,480 ,3}}
+};
+
+static int set_fb_args(struct vcfg_t use_cfg, int color_mode) {
+    fb_ctl = (void*) 0x9d0d0000;
+    uint32_t iters = 0;
+    while(fb_ctl->status & 2) {
+        iters ++;
+        if(iters > 0xa0000000) {
+            printf("FB seemed to be stucked, force to update!\n");
+            break;
+        }
+    }
+    for(int i = 0 ; i < 4 ; i+=1) {
+        fb_ctl->hcfg[i] = use_cfg.hcfg[i] - 1;
+        fb_ctl->vcfg[i] = use_cfg.vcfg[i] - 1;
+    }
+    color_mode = color_mode & 0x3;
+    color_mode = color_mode == 2 ? 3 : color_mode;
+    printf("Setting Framebuffer with the following parameters:\n");
+    printf("\t-------------------------------------------------------------------\n");
+    printf("\t;            ; Sync       ; Back Proch ; Active     ; Front Proch ;\n");
+    printf("\t; Horizontal ; %-10d ; %-10d ; %-10d ; %-11d ;\n", use_cfg.hcfg[0], use_cfg.hcfg[1], use_cfg.hcfg[2], use_cfg.hcfg[3]);
+    printf("\t; Vertical   ; %-10d ; %-10d ; %-10d ; %-11d ;\n", use_cfg.vcfg[0], use_cfg.vcfg[1], use_cfg.vcfg[2], use_cfg.vcfg[3]);
+    printf("\t-------------------------------------------------------------------\n");
+
+    uint32_t pixel_size = color_mode == 0 ? 4 : (color_mode == 1 ? 3 : 2);
+    uint32_t fb_length = use_cfg.hcfg[2] * use_cfg.vcfg[2] * pixel_size;
+    printf("Color mode is %s, with each pixel consume %c bytes, setting fb_length to %d bytes.", 
+        color_mode == 0 ? "RGB8888" : (color_mode == 1 ? "RGB888" : "RGB565"),
+        pixel_size + '0',
+        fb_length
+    );
+    fb_ctl->length = fb_length - 64;
+    fb_ctl->conf = 0x3 | (color_mode << 2);
+    return 0;
+}
+
+static int set_fb_addr(uint32_t start_addr) {
+    fb_ctl = (void*) 0x9d0d0000;
+    if(start_addr & 0xfff) {
+        printf("Warning: Lower 12bits of FB_ADDR will be ignored.\n");
+    }
+    fb_ctl->addr = start_addr;
+    return 0;
+} 
+
+static int do_setfb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]) {
+    if(argc < 3) {
+		printf("Usage: setfb <1080p/720p/480p> <color-mode>\n");
+		return 0;
+    }
+    int i;
+    int color_mode = -1;
+    struct vcfg_t use_cfg;
+    uint32_t darg;
+    if(argc == 3) {
+        // 使用选定参数模式
+	    sscanf(argv[1], "%dp", &darg);
+        for(i = 0 ; i < sizeof(support_resolution) / sizeof(uint32_t); i++) {
+            if(darg == support_resolution[i]) {
+                use_cfg = support_cfg[i];
+                color_mode = 0;
+                break;
+            }
+        }
+        if(color_mode == -1) {
+            printf("Not a valid resolution %s.\n", argv[1]);
+            return 0;
+        }
+        i = 2;
+    } else if(argc == 10){
+        // 手动指定参数模式
+        uint32_t darg;
+        for(i = 1; i < 9 ; i++) {
+            int r = sscanf(argv[i], "%d", &darg);
+            if(r == 0) {
+                printf("Error reading %d %s\n", i, argv[i]);
+            }
+            ((uint32_t*)&use_cfg)[i - 1] = darg;
+        }
+    }
+    sscanf(argv[i], "%d", &darg);
+    if(darg == 565) {
+        color_mode = 3;
+    } else if(darg == 888) {
+        color_mode = 1;
+    } else {
+        printf("Not valid colormode %s, support 565 or 888",argv[i]);
+        color_mode = 3;
+    }
+    return set_fb_args(use_cfg, color_mode);
+}
+
+U_BOOT_CMD(
+    setfb, 10, 0,  do_setfb,
+    "set a framebuffer configuration by specified value.\n",
+    "<1080p/720p/480p>"
+)
+
+static int do_setfbaddr(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]) {
+    if(argc < 2) {
+        printf("Usage: <start address>.\n");
+        return 0;
+    }
+    uint32_t start_addr;
+    sscanf(argv[1], "%x", &start_addr);
+    return set_fb_addr(start_addr);
+}
+
+U_BOOT_CMD(
+    setfbaddr, 10, 0,  do_setfbaddr,
+    "set framebuffer starting address and size.\n",
+    "0x<start address> <size in byte>"
+)
