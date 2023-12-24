@@ -338,8 +338,8 @@ static int set_fb_args(struct vcfg_t use_cfg, int color_mode) {
         }
     }
     for(int i = 0 ; i < 4 ; i+=1) {
-        fb_ctl->hcfg[i] = use_cfg.hcfg[i] - 1;
-        fb_ctl->vcfg[i] = use_cfg.vcfg[i] - 1;
+        fb_ctl->hcfg[i] = use_cfg.hcfg[i];
+        fb_ctl->vcfg[i] = use_cfg.vcfg[i];
     }
     color_mode = color_mode & 0x3;
     color_mode = color_mode == 2 ? 3 : color_mode;
@@ -357,7 +357,7 @@ static int set_fb_args(struct vcfg_t use_cfg, int color_mode) {
         pixel_size + '0',
         fb_length
     );
-    fb_ctl->length = fb_length - 64;
+    fb_ctl->length = fb_length;
     fb_ctl->conf = 0x3 | (color_mode << 2);
     return 0;
 }
