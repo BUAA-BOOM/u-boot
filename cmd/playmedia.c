@@ -322,9 +322,9 @@ struct vcfg_t{
 };
 static uint32_t support_resolution[] = {1080,720,480}; // 数组需保持有序
 static struct vcfg_t support_cfg[] = {
-    {{32,80,1920,48},{5,6,1080,3}},
-    {{32,80,1280,48},{5,6,720 ,3}},
-    {{32,80,640 ,48},{5,6,480 ,3}}
+    {{32,80,1920,48},{5,13,1080,3}},
+    {{32,80,1280,48},{5,13,720 ,3}},
+    {{32,80,640 ,48},{5,13,480 ,3}}
 };
 
 static int set_fb_args(struct vcfg_t use_cfg, int color_mode) {
@@ -338,8 +338,8 @@ static int set_fb_args(struct vcfg_t use_cfg, int color_mode) {
         }
     }
     for(int i = 0 ; i < 4 ; i+=1) {
-        fb_ctl->hcfg[i] = use_cfg.hcfg[i];
-        fb_ctl->vcfg[i] = use_cfg.vcfg[i];
+        fb_ctl->hcfg[i] = use_cfg.hcfg[i] - 1;
+        fb_ctl->vcfg[i] = use_cfg.vcfg[i] - 1;
     }
     color_mode = color_mode & 0x3;
     color_mode = color_mode == 2 ? 3 : color_mode;
