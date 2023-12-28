@@ -58,7 +58,9 @@ struct fb_ip_ctl
     | Framebuffer             |
     |-------------------------|  0M == 0x0F00_0000 == 240M
 */
-#define FRAMEBUFFER_SIZE (2 * 1024 * 1024)
+// FRAMEBUFFER 必须 4k 对齐
+uint32_t frame_size_y, frame_size_x, dec_color_mode;
+uint32_t framebuffer_size = (2 * 1024 * 1024)
 #define FRAMEBUFFER_START (0x0F000000)
 /*
     File Format:
@@ -115,6 +117,7 @@ static void close_i2s_device(void) {
             i2s_ctl->mm2s_ctrl = 0;
         }
     }
+    i2s_ctl->mm2s_ctrl = 0;
 }
 
 static void i2s_play_one_frame(uint32_t abuf_ptr) {
@@ -124,7 +127,7 @@ static void i2s_play_one_frame(uint32_t abuf_ptr) {
 
 static int play_one_frame(int fb_num)
 {
-    uint32_t vbuf_ptr = FRAMEBUFFER_START + FRAMEBUFFER_SIZE * fb_num;
+    uint32_t vbuf_ptr = FRAMEBUFFER_START + framebuffer_size * fb_num;
     uint32_t abuf_ptr = ab_array[fb_num];
     i2s_play_one_frame(abuf_ptr);
     fb_play_one_frame(vbuf_ptr);
@@ -147,11 +150,11 @@ static int decode_one_frame(int frame_size,
 
     // 配置 decode ip 的地址
     decode_ctl->src = ((uint32_t)jpeg_file_ptr) & 0x1fffffff;
-    decode_ctl->dst = FRAMEBUFFER_START + FRAMEBUFFER_SIZE * fb_num;
-    decode_ctl->stride = 1280; // FIXED 1280x720p, but resolution might be various.
+    decode_ctl->dst = FRAMEBUFFER_START + framebuffer_size * fb_num;
+    decode_ctl->stride = 1280 * dec_color_mode ? 3 : 2; // FIXED 1280x720p @ 16bits, but resolution might be various.
 
     // 配置开始 decode ip 的解码
-    decode_ctl->iocen = 1; // 打开中断输出，清理旧的中断
+    decode_ctl->iocen = 1 | ((dec_color_mode & 1) << 1); // 打开中断输出，清理旧的中断
     decode_ctl->ctrl  = 0x80000000 | vframe_size;
     // printf("decoder_mmio %x %x %x\n", decode_ctl->src, decode_ctl->dst, decode_ctl->ctrl, decode_ptr);
 
@@ -290,13 +293,19 @@ static int mediaplayer(void *binary)
 
 static int do_playmedia(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
-	if(argc < 3) {
-		printf("Usage: playmedia 0x[media_binary_addr] [fps]\n");
+	if(argc < 4) {
+		printf("Usage: playmedia 0x[media_binary_addr] [fps] [color mode]\n");
 		return 0;
 	}
 	uint32_t location;
 	sscanf(argv[1], "0x%x", &location);
     sscanf(argv[2], "%d", &fps);
+    sscanf(argv[3], "%d", &dec_color_mode);
+    frame_size_x = 1280;
+    frame_size_y = 720;
+    framebuffer_size = frame_size_x * frame_size_y * (dec_color_mode ? 3 : 2);
+    framebuffer_size = ((framebuffer_size & 0xfff) ? 1 : 0) + framebuffer_size >> 12;
+    framebuffer_size <<= 12; // 4k align
 	if(location < 0xa0000000) {
 		printf("Location should'nt be lower than 0xa0000000.\n");
 		return 0;
