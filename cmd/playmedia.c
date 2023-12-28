@@ -60,7 +60,7 @@ struct fb_ip_ctl
 */
 // FRAMEBUFFER 必须 4k 对齐
 uint32_t frame_size_y, frame_size_x, dec_color_mode;
-uint32_t framebuffer_size = (2 * 1024 * 1024)
+uint32_t framebuffer_size = (2 * 1024 * 1024);
 #define FRAMEBUFFER_START (0x0F000000)
 /*
     File Format:
@@ -151,7 +151,7 @@ static int decode_one_frame(int frame_size,
     // 配置 decode ip 的地址
     decode_ctl->src = ((uint32_t)jpeg_file_ptr) & 0x1fffffff;
     decode_ctl->dst = FRAMEBUFFER_START + framebuffer_size * fb_num;
-    decode_ctl->stride = 1280 * dec_color_mode ? 3 : 2; // FIXED 1280x720p @ 16bits, but resolution might be various.
+    decode_ctl->stride = 1280 * (dec_color_mode ? 3 : 2); // FIXED 1280x720p @ 16bits, but resolution might be various.
 
     // 配置开始 decode ip 的解码
     decode_ctl->iocen = 1 | ((dec_color_mode & 1) << 1); // 打开中断输出，清理旧的中断
