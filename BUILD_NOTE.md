@@ -30,6 +30,8 @@ fatload mmc 0 0xa0000000 mos.bin
 fatload mmc 0 0xa3800000 fs.img
 go 0xa0010b24
 
-fatload mmc 0 0xa1000000 girl720.rgb;setfb 720p 888
+fatload mmc 0 0xa1000000 girl888.rgb;setfbaddr 0xa1000000;setfb 1080p 888
 
-fatload mmc 0 0xa1000000 girl565.rgb;setfb 720p 565
+fatload mmc 0 0xa1000000 girl720.rgb;setfbaddr 0xa1000000;setfb 720p 888
+
+fatload mmc 0 0xa1000000 girl565.rgb;setfbaddr 0xa1000000;setfb 720p 565
