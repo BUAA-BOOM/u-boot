@@ -25,6 +25,7 @@ bootelf 0xa2000000 g console=ttyS0,230400 rdinit=/sbin/init
 
 # Uboot 编译-启动 MOS 命令
 make && loongarch32r-linux-gnusf-objcopy ./target/mos ./target/mos.bin -O binary
+loongarch32r-linux-gnusf-objdump -S ./target/mos > ./target/mos.S
 <!-- fatload mmc 0 0x80000000 mos.bin -->
 fatload mmc 0 0xa0000000 mos.bin
 fatload mmc 0 0xa3800000 fs.img
@@ -35,3 +36,7 @@ fatload mmc 0 0xa1000000 girl888.rgb;setfbaddr 0xa1000000;setfb 1080p 888
 fatload mmc 0 0xa1000000 girl720.rgb;setfbaddr 0xa1000000;setfb 720p 888
 
 fatload mmc 0 0xa1000000 girl565.rgb;setfbaddr 0xa1000000;setfb 720p 565
+
+sudo ip addr add 192.168.2.3/24 dev usb0
+ip addr add 192.168.2.2/24 dev usb0
+ip link set usb0 up

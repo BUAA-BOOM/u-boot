@@ -9,13 +9,13 @@ CONFIG_DEBUG_UART=y
 CONFIG_SYS_LOAD_ADDR=0xA0000000
 CONFIG_BOOTDELAY=1
 CONFIG_USE_BOOTCOMMAND=y
-# CONFIG_BOOTCOMMAND="fatload mmc 0 0xa2000000 vmlinux;bootelf 0xa2000000 g console=ttyS0,230400 root=/dev/mmcblk0p2 rootfstype=ext4 rw rootwait loglevel=9"
-CONFIG_BOOTCOMMAND="bootelf 0xa2000000 g console=ttyS0,230400 root=/dev/mmcblk0p2 rootfstype=ext4 rw rootwait loglevel=9"
+CONFIG_BOOTCOMMAND="fatload mmc 0 0xa2000000 vmlinux;bootelf 0xa2000000 g console=ttyS0,230400 root=/dev/mmcblk0p2 rootfstype=ext4 rw rootwait loglevel=9"
+# CONFIG_BOOTCOMMAND="bootelf 0xa2000000 g console=ttyS0,230400 root=/dev/mmcblk0p2 rootfstype=ext4 rw rootwait loglevel=9"
 # CONFIG_BOOTCOMMAND="playmedia 0xa0200000 24"
 CONFIG_DISPLAY_CPUINFO=y
 CONFIG_DISPLAY_BOARDINFO_LATE=y
 CONFIG_HUSH_PARSER=y
-CONFIG_SYS_PROMPT="u-boot@LainSoC# "
+CONFIG_SYS_PROMPT="u-boot@LainSoC>> "
 # CONFIG_CMD_BDI is not set
 # CONFIG_CMD_CONSOLE is not set
 CONFIG_CMD_BOOTZ=y
