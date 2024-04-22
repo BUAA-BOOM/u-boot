@@ -65,9 +65,13 @@ add.w	x0, sp, zero			# save gd pointer
 	sub.w	sp, sp, t2		# reserve space for early malloc
 	and		sp, sp, t0		# force 16 byte alignment
 #endif
+# reserve stack space for all cores.
+	slli.w  t0, t2, 16 // 64k stack space for each core.
+	sub.w   sp, sp, t0
 	add.w	fp, sp, zero
 
-	/* Clear gd */
+	bne     t2, zero, 2f
+	/* Clear gd if core id == 0*/
 	add.w	t0, x0, zero
 1:
 	// PTR_S	zero, 0(t0)
@@ -80,6 +84,7 @@ add.w	x0, sp, zero			# save gd pointer
 	// PTR_S	sp, GD_MALLOC_BASE(k0)	# gd->malloc_base offset
 	st.w	sp, x0, GD_MALLOC_BASE
 #endif
+2:
 	.endm
 
 ENTRY(_start)
@@ -87,6 +92,16 @@ ENTRY(_start)
 	#  mtc0	zero, CP0_COUNT	# clear cp0 count for most accurate boot timing
 	# csrwr   $r12, csr_ticlr
 	b	reset
+
+core_wait:
+	// Enable IPI interrupts
+	li.w	t0, 0x00001fff
+	csrwr   t0, csr_ectl
+	li.w	t0, 0x4
+	li.w	t1, 0x4
+	csrxchg   t0, t1, csr_crmd
+1:	idle
+	b    1b
 
 	.org 0x380
 	csrwr     t0, csr_save0
@@ -238,7 +253,7 @@ reset:
 	li.w    $r31, 0
 	li.w    t0, 0x9c000380
     csrwr   t0, csr_eentry
-	li.w    t0, 0x1c000380
+	li.w    t0, 0x1c000100
 	csrwr   t0, csr_tlbrentry
 
     li.w      t1, 0xa0000009  // cacheed window, cache attribute is set after 
@@ -257,7 +272,11 @@ cseg:
 	
 
 // 	/* Set up initial stack and global data */
+// use t2 to store core id.
+
+	csrrd   t2, csr_cpuid
 	setup_stack_gd
+	// slave cores wait for the master core(id == 0)
 
 #ifdef CONFIG_DEBUG_UART
 	/* Earliest point to set up debug uart */
@@ -270,6 +289,9 @@ cseg:
 	bl		lal1_cache_reset
     li.w      t1, 0xa0000019  // cacheed window, set cache attribute
     csrwr   t1, csr_dmw0
+
+	csrrd   t2, csr_cpuid
+	bne     t2, zero, core_wait
 	//  nop
 
 	// TODO: lowlevel_init
