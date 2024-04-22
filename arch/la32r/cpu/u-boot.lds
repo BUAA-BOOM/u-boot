@@ -4,7 +4,7 @@
  * Wolfgang Denk Engineering, <wd@denx.de>
  */
 
-OUTPUT_ARCH(loongarch32r)
+OUTPUT_ARCH(loongarch32)
 ENTRY(_start)
 SECTIONS
 {

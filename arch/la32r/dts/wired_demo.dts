@@ -32,7 +32,37 @@
 		console = &zynq_serial0;
         serial = &zynq_serial0;
         eth = &zynq_gem3;
-        mmc0 = &zynq_mmc0;
+        mmc0 = &zynq_mmc1;
+	};
+
+	zynq_serial0: serial@1f000000 {
+    	u-boot,dm-pre-reloc;
+    	compatible = "cdns,uart-r1p12", "xlnx,xuartps";
+    	status = "okay";
+    	reg = <0x0 0x1f000000 0x0 0x1000>;
+    	clock-names = "uart_clk", "pclk";
+	};
+
+	zynq_gem3: ethernet@1f0e0000 {
+		compatible = "cdns,zynqmp-gem", "cdns,gem";
+		status = "disabled";
+		reg = <0x0 0x1f0e0000 0x0 0x1000>;
+		clock-names = "pclk", "hclk", "tx_clk";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#stream-id-cells = <1>;
+	};
+
+	zynq_mmc1: mmc@1f170000 {
+		u-boot,dm-pre-reloc;
+		compatible = "xlnx,zynqmp-8.9a", "arasan,sdhci-8.9a";
+		status = "disabled";
+		reg = <0x0 0x1f170000 0x0 0x1000>;
+		clock-names = "clk_xin", "clk_ahb";
+		xlnx,device_id = <1>;
+		#stream-id-cells = <1>;
+		#clock-cells = <1>;
+		clock-output-names = "clk_out_sd1", "clk_in_sd1";
 	};
 };
 

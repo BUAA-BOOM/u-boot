@@ -702,19 +702,19 @@ static int zynq_gem_probe(struct udevice *dev)
 	flush_dcache_range(addr, addr + roundup(RX_BUF * PKTSIZE_ALIGN, ARCH_DMA_MINALIGN));
 	barrier();
 
-	/* Align bd_space to MMU_SECTION_SHIFT */
-	bd_space = memalign(1 << MMU_SECTION_SHIFT, BD_SPACE);
+	/* Align bd_space to 12 */
+	bd_space = memalign(1 << 12, BD_SPACE);
 	if (!bd_space) {
 		ret = -ENOMEM;
 		goto err1;
 	}
 
-	mmu_set_region_dcache_behaviour((phys_addr_t)bd_space,
-					BD_SPACE, DCACHE_OFF);
+	// mmu_set_region_dcache_behaviour((phys_addr_t)bd_space,
+	// 				BD_SPACE, DCACHE_OFF);
 
 	/* Initialize the bd spaces for tx and rx bd's */
-	priv->tx_bd = (struct emac_bd *)bd_space;
-	priv->rx_bd = (struct emac_bd *)((ulong)bd_space + BD_SEPRN_SPACE);
+	priv->tx_bd = (struct emac_bd *)( (ulong)bd_space & 0x1fffffff);
+	priv->rx_bd = (struct emac_bd *)(((ulong)bd_space & 0x1fffffff) + BD_SEPRN_SPACE);
 
 	ret = clk_get_by_name(dev, "tx_clk", &priv->tx_clk);
 	if (ret < 0) {
