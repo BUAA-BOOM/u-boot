@@ -8,10 +8,10 @@ choice
     prompt "Board select"
 
 config TARGET_LA32RSOC_DEMO
-    bool "LA32RSoC Demo SoC"
+    bool "Official SoC"
 
 config TARGET_LA32RMEGA_DEMO
-    bool "LA32RSoC Demo SoC"
+    bool "Mega SoC"
 
 config TARGET_WIRED_DEMO
     bool "Wired SoC"

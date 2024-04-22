@@ -100,7 +100,7 @@ core_wait:
 	li.w	t0, 0x4
 	li.w	t1, 0x4
 	csrxchg   t0, t1, csr_crmd
-1:	idle
+1:	idle 0
 	b    1b
 
 	.org 0x380

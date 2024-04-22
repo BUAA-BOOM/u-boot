@@ -17,6 +17,13 @@ export CROSS_COMPILE=loongarch32r-linux-gnusf-; \
 clear && make la32rmega_defconfig && make -j && loongarch32r-linux-gnusf-objdump -S u-boot > u-boot.S; \
 loongarch32r-linux-gnusf-objcopy ./u-boot -O binary u-boot.bin
 
+# WiredSoc 构建命令
+export DEVICE_TREE=wired_demo; \
+export ARCH=la32r; \
+export CROSS_COMPILE=loongarch32r-linux-gnusf-; \
+clear && make wired_defconfig && make -j && loongarch32r-linux-gnusf-objdump -S u-boot > u-boot.S; \
+loongarch32r-linux-gnusf-objcopy ./u-boot -O binary u-boot.bin
+
 fatload mmc 0 0xa2000000 vmlinux
 bootelf 0xa2000000 g console=ttyS0,230400 rdinit=/init 
 

@@ -71,7 +71,7 @@ config SYS_VENDOR
     default "wired"
 
 config SYS_CONFIG_NAME
-    default "wired_demo"
+    default "wired_config"
 
 config SYS_TEXT_BASE
     default 0xBC000000
