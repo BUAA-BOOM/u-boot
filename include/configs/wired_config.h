@@ -45,10 +45,10 @@
 
 
 // serial configuration
-#define CONFIG_CONS_INDEX 1
-#define CONFIG_SYS_NS16550_COM1 0x9d010000
-#define CONFIG_SYS_NS16550_CLK 50000000
-#define CONFIG_SYS_NS16550_IER 0
+// #define CONFIG_CONS_INDEX 1
+// #define CONFIG_SYS_NS16550_COM1 0x9d010000
+// #define CONFIG_SYS_NS16550_CLK 50000000
+// #define CONFIG_SYS_NS16550_IER 0
 
 
 /* -------------------------------------------------

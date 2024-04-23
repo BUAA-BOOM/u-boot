@@ -292,7 +292,7 @@ static inline void _debug_uart_init(void)
 
 	_uart_zynq_serial_init(regs);
 	_uart_zynq_serial_setbrg(regs, CONFIG_DEBUG_UART_CLOCK,
-				 CONFIG_BAUDRATE);
+				 115200);
 }
 
 static inline void _debug_uart_putc(int ch)

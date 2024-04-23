@@ -61,8 +61,8 @@ addi.w	sp, sp, -GD_SIZE		# reserve space for gd
 and		sp, sp, t0		# force 16 byte alignment
 add.w	x0, sp, zero			# save gd pointer
 #if CONFIG_VAL(SYS_MALLOC_F_LEN)
-	li.w	t2, CONFIG_VAL(SYS_MALLOC_F_LEN)
-	sub.w	sp, sp, t2		# reserve space for early malloc
+	li.w	t3, CONFIG_VAL(SYS_MALLOC_F_LEN)
+	sub.w	sp, sp, t3		# reserve space for early malloc
 	and		sp, sp, t0		# force 16 byte alignment
 #endif
 # reserve stack space for all cores.
@@ -253,7 +253,7 @@ reset:
 	li.w    $r31, 0
 	li.w    t0, 0x9c000380
     csrwr   t0, csr_eentry
-	li.w    t0, 0x1c000100
+	li.w    t0, 0x1c000380
 	csrwr   t0, csr_tlbrentry
 
     li.w      t1, 0xa0000009  // cacheed window, cache attribute is set after 
@@ -286,7 +286,7 @@ cseg:
 	/* Initialize caches... */
 	// PTR_LA	t9, mips_cache_reset
 	// jalr	t9
-	bl		lal1_cache_reset
+	// bl		lal1_cache_reset
     li.w      t1, 0xa0000019  // cacheed window, set cache attribute
     csrwr   t1, csr_dmw0
 

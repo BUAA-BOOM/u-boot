@@ -35,9 +35,9 @@ static void show_regs(const struct Trapframe *regs)
 		if ((i % 4) == 0)
 			printf("$%2d   :", i);
 		if (i == 0)
-			printf(" %0lx",  0UL);
+			printf(" %08lx",  0UL);
 		else
-			printf(" %0lx", regs->regs[i]);
+			printf(" %08lx", regs->regs[i]);
 
 		i++;
 		if ((i % 4) == 0)
@@ -50,10 +50,9 @@ static void show_regs(const struct Trapframe *regs)
 	// /*
 	//  * Saved cp0 registers
 	//  */
-	// printf("epc   : %0*lx (text %0*lx)\n", field, regs->cp0_epc,
-	//        field, regs->cp0_epc - gd->reloc_off);
-	// printf("ra    : %0*lx (text %0*lx)\n", field, regs->regs[31],
-	//        field, regs->regs[31] - gd->reloc_off);
+	printf("era   : %08lx\n", regs->era);
+	printf("BadVA : %08lx\n", regs->badv);
+	printf("PrId  : %08lx\n", regs->cpuid);
 
 	// printf("Status: %08x\n", (uint32_t) regs->cp0_status);
 
