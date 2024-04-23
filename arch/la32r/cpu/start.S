@@ -100,17 +100,35 @@ core_wait:
 	li.w	t0, 0x4
 	li.w	t1, 0x4
 	csrxchg   t0, t1, csr_crmd
-1:	idle 0
+1:
+	idle 0
 	b    1b
 
-	.org 0x380
+.org 0x380
 	csrwr     t0, csr_save0
 	csrwr     t1, csr_save1
 	csrrd     t0, csr_era
 	csrwr     t0, csr_save2
+
+    // t0 t1 is usable
+	// check whether the incomming interrupt is IPI
+	// if it is, jump to do_ipi
+	// if not, continue to check
+	csrrd     t0, csr_estat
+	lu12i.w   t1, 0x7fff1
+	and       t0, t0, t1
+	lu12i.w   t1, 0x1
+	bne       t0, t1, 1f
+	// all reg is usable
+	addi.w    a0, t2, 0
+	bl        do_ipi
+	ertn
+
+1:
     la        t0, 1f
 	csrwr     t0, csr_era
 	ertn
+
 1:
 	lu12i.w   t0, -131072
 	pcaddu12i t1, 0

@@ -65,6 +65,24 @@ static void show_regs(const struct Trapframe *regs)
 	// printf("PrId  : %08x\n", read_c0_prid());
 }
 
+typedef struct {
+    volatile uint32_t status;
+    volatile uint32_t en;
+    volatile uint32_t set;
+    volatile uint32_t clear;
+    volatile uint32_t pad[4];
+    volatile uint32_t mbuf[4];
+} ipi_t;
+
+// This should be implement in ASM rather than C.
+// Because Stack may not be available when this function is called.
+void do_ipi(int core_id)
+{
+	ipi_t *ipi = (ipi_t *)(0x9d200000 + core_id * 0x1000);
+	printf("Core %d got IPI with action %x.\n", core_id, ipi->status);
+	return;
+}
+
 void do_reserved(const struct Trapframe *regs)
 {
 	printf("\nOoops LA32R Processor cannot handle exception code %lx (subcode: %lx)\n",(regs->estat >> 16) & 0x3f,(regs->estat >> 22) & 0x1ff);
