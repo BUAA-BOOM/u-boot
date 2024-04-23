@@ -120,9 +120,17 @@ core_wait:
 	lu12i.w   t1, 0x1
 	bne       t0, t1, 1f
 	// all reg is usable
-	addi.w    a0, t2, 0
-	bl        do_ipi
-	ertn
+	// Now: read the mail box to fetch PC, sp, tp, and jump to PC.
+	li.w      t0, 0x9d200000
+	csrrd     t3, csr_cpuid
+	slli.w    t2, t3, 12
+	or        t1, t0, t2   // Base address of this core's mailbox
+	ld.w      ra, t1, 0x20 // PC is the first parameter
+	ld.w      sp, t1, 0x28 // SP is the second parameter
+	ld.w      tp, t1, 0x30 // TP is the third parameter
+	ld.w      a1, t1, 0x38 // a0 is the fourth parameter
+	addi.w    a0, t3, 0
+	jirl      zero, ra, 0  // jump to pc
 
 1:
     la        t0, 1f

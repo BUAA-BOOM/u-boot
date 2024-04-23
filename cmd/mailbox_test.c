@@ -21,7 +21,7 @@ typedef struct {
     volatile uint32_t set;
     volatile uint32_t clear;
     volatile uint32_t pad[4];
-    volatile uint32_t mbuf[4];
+    volatile uint64_t mbuf[4];
 } ipi_t;
 
 static ipi_t *ipi[MAX_CORE];
@@ -32,16 +32,35 @@ static void init_ipi() {
     }
 }
 
+static void test_function(uint32_t core, uint32_t param) {
+    printf("There is core %d speaking, parm: %x!\n", core, param);
+    while(1) {
+        volatile int i = 1000000000;
+        while(i--);
+        printf("Core %d is still alive!\n", core);
+    }
+}
+
 static void send_action(uint32_t core, uint32_t action) {
     printf("Sending action %08x to core %d with %p.\n", action, core, *(ipi + core));
     ipi[core]->en  = 0xffffffff;
     ipi[core]->set = action;
 }
 
+static void wakeup_core(uint32_t core, uintptr_t prog, uintptr_t sp, uintptr_t tp, uintptr_t parm) {
+    printf("Waking up core %d with %p.\n", core, *(ipi + core));
+    ipi[core]->mbuf[0] = prog;
+    ipi[core]->mbuf[1] = sp;
+    ipi[core]->mbuf[2] = tp;
+    ipi[core]->mbuf[3] = parm;
+    send_action(core, 0x1);
+    return;
+}
+
 static int do_testmb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]) {
     init_ipi();
     printf("Mailbox test begin!\n");
-    send_action(1, 0x12345);
+    wakeup_core(1, (uintptr_t)test_function, 0xa2000000 - 1 * 0x8000, 0xa1f00000 - 1 * 0x8000, 0x12345678);
     printf("finish!\n");
     return 0;
 }
