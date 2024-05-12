@@ -15,6 +15,8 @@
 // #define CLEAR    0x0c
 // #define MBUF     0x20
 
+static volatile int shared_value;
+
 typedef struct {
     volatile uint32_t status;
     volatile uint32_t en;
@@ -33,11 +35,13 @@ static void init_ipi() {
 }
 
 static void test_function(uint32_t core, uint32_t param) {
-    printf("There is core %d speaking, parm: %x!\n", core, param);
+    shared_value += 1;
+    // printf("There is core %d speaking, parm: %x!\n", core, param);
     while(1) {
-        volatile int i = 1000000000;
+        volatile int i = 100000000;
         while(i--);
-        printf("Core %d is still alive!\n", core);
+        // printf("Core %d is still alive!\n", core);
+        shared_value += 1;
     }
 }
 
@@ -61,7 +65,15 @@ static int do_testmb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv
     init_ipi();
     printf("Mailbox test begin!\n");
     wakeup_core(1, (uintptr_t)test_function, 0xa2000000 - 1 * 0x8000, 0xa1f00000 - 1 * 0x8000, 0x12345678);
-    printf("finish!\n");
+    printf("finish call, waiting for son reply!\n");
+    int old_shared_value = 0;
+    while(1) {
+        int new_value = shared_value;
+        if(old_shared_value != new_value) {
+            printf("New value %d!\r", new_value);
+            old_shared_value = new_value;
+        }
+    }
     return 0;
 }
 

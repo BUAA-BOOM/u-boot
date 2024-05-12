@@ -33,11 +33,27 @@
 		#clock-cells = <0>;
 		clock-frequency = <200000000>;
 	};
+	bus_clk: bus_clk {
+		compatible = "fixed-clock";
+        clock-frequency = <100000000>;
+		#clock-cells = <0>;
+	};
 
 	aliases {
-		console = &zynq_serial0;
-        serial = &zynq_serial0;
+		// console = &zynq_serial0;
+        // serial = &zynq_serial0;
+		console = &serial0;
+        serial = &serial0;
         mmc0 = &zynq_mmc1;
+	};
+	
+	serial0: serial@9d010000 {
+		compatible = "ns16550";
+		reg = <0x9d010000 0x1000>;
+        reg-offset = <0>;
+        reg-shift = <0>;
+        clocks = <&bus_clk>;
+        current-speed = <115200>;
 	};
 
 	zynq_serial0: serial@9f000000 {

@@ -95,11 +95,13 @@ ENTRY(_start)
 
 core_wait:
 	// Enable IPI interrupts
-	li.w	t0, 0x00001fff
+	li.w	t0, 0x00001000
 	csrwr   t0, csr_ectl
 	li.w	t0, 0x4
 	li.w	t1, 0x4
-	csrxchg   t0, t1, csr_crmd
+	/* Enable PG */
+	li.w		t0, 0xb4		# PLV=0, IE=0, PG=1
+	csrwr		t0, csr_crmd
 1:
 	idle 0
 	b    1b
@@ -125,6 +127,8 @@ core_wait:
 	csrrd     t3, csr_cpuid
 	slli.w    t2, t3, 12
 	or        t1, t0, t2   // Base address of this core's mailbox
+	ld.w      t0, t1, 0x0  // get status
+	st.w      t0, t1, 0xc  // clr interrupt
 	ld.w      ra, t1, 0x20 // PC is the first parameter
 	ld.w      sp, t1, 0x28 // SP is the second parameter
 	ld.w      tp, t1, 0x30 // TP is the third parameter
@@ -283,9 +287,9 @@ reset:
 	csrwr   t0, csr_tlbrentry
 
     li.w      t1, 0xa0000009  // cacheed window, cache attribute is set after 
-    csrwr   t1, csr_dmw0 
-    li.w      t1, 0x00000009  // uncacheed window, temporary
     csrwr   t1, csr_dmw1
+    li.w      t1, 0x00000009  // uncacheed window, temporary
+    csrwr   t1, csr_dmw0
     li.w      t1, 0x10 
     li.w      t2, 0x18 
     csrxchg t1, t2, csr_crmd  //enable address translation
@@ -294,7 +298,7 @@ reset:
 	jr		t0
 cseg:
     li.w    t1, 0x80000009  // uncacheed window
-    csrwr   t1, csr_dmw1
+    csrwr   t1, csr_dmw0
 	
 
 // 	/* Set up initial stack and global data */
@@ -306,7 +310,7 @@ cseg:
 
 #ifdef CONFIG_DEBUG_UART
 	/* Earliest point to set up debug uart */
-	bl		debug_uart_init
+	// bl		debug_uart_init
 #endif
 
 	/* Initialize caches... */
@@ -314,7 +318,7 @@ cseg:
 	// jalr	t9
 	// bl		lal1_cache_reset
     li.w      t1, 0xa0000019  // cacheed window, set cache attribute
-    csrwr   t1, csr_dmw0
+    csrwr   t1, csr_dmw1
 
 	csrrd   t2, csr_cpuid
 	bne     t2, zero, core_wait
