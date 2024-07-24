@@ -1,16 +1,10 @@
-# qemu 构建命令
+# QEMU / Chiplab 构建命令
 export DEVICE_TREE=la32rsoc_demo
 export ARCH=la32r
 export CROSS_COMPILE=loongarch32r-linux-gnusf-
-clear && make la32rsoc_defconfig && make && loongarch32r-linux-gnusf-objdump -S u-boot > u-boot.S && cp u-boot ../qemu_work/u-boot
+clear && make la32rsoc_defconfig && make -j && loongarch32r-linux-gnusf-objdump -S u-boot > u-boot.S
 
-# chiplab 构建命令
-export DEVICE_TREE=la32rsoc_demo
-export ARCH=la32r
-export CROSS_COMPILE=loongarch32r-linux-gnusf-
-clear && make la32rsoc_defconfig && make -j && loongarch32r-linux-gnusf-objdump -S u-boot > u-boot.S && cp u-boot ../qemu_work/u-boot
-
-# Megasoc 构建命令
+# MegaSoC 构建命令
 export DEVICE_TREE=la32rmega_demo; \
 export ARCH=la32r; \
 export CROSS_COMPILE=loongarch32r-linux-gnusf-; \
@@ -22,29 +16,4 @@ export DEVICE_TREE=wired_demo; \
 export ARCH=la32r; \
 export CROSS_COMPILE=loongarch32r-linux-gnusf-; \
 clear && make wired_defconfig && make -j && loongarch32r-linux-gnusf-objdump -S u-boot > u-boot.S; \
-loongarch32r-linux-gnusf-objcopy ./u-boot -O binary u-boot.bin; \
-cp u-boot.bin /mnt/d/BITSTREAM/u-boot.smp
-
-fatload mmc 0 0xa2000000 vmlinux
-bootelf 0xa2000000 g console=ttyS0,230400 rdinit=/init 
-
-bootelf 0xa2000000 g console=ttyS0,230400 rdinit=/sbin/init
-
-
-# Uboot 编译-启动 MOS 命令
-make && loongarch32r-linux-gnusf-objcopy ./target/mos ./target/mos.bin -O binary
-loongarch32r-linux-gnusf-objdump -S ./target/mos > ./target/mos.S
-<!-- fatload mmc 0 0x80000000 mos.bin -->
-fatload mmc 0 0xa0000000 mos.bin
-fatload mmc 0 0xa3800000 fs.img
-go 0xa0010b24
-
-fatload mmc 0 0xa1000000 girl888.rgb;setfbaddr 0xa1000000;setfb 1080p 888
-
-fatload mmc 0 0xa1000000 girl720.rgb;setfbaddr 0xa1000000;setfb 720p 888
-
-fatload mmc 0 0xa1000000 girl565.rgb;setfbaddr 0xa1000000;setfb 720p 565
-
-sudo ip addr add 192.168.2.3/24 dev usb0
-ip addr add 192.168.2.2/24 dev usb0
-ip link set usb0 up
+loongarch32r-linux-gnusf-objcopy ./u-boot -O binary u-boot.bin
