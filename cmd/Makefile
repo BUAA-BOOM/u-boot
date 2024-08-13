@@ -210,6 +210,7 @@ obj-$(CONFIG_ARCH_MVEBU) += mvebu/
 
 # Custom command begin
 obj-$(CONFIG_CMD_PLAYMEDIA) += playmedia.o
+obj-$(CONFIG_CMD_PLAYSLIDE) += playslide.o
 obj-$(CONFIG_CMD_TESTMB) += mailbox_test.o
 
 endif # !CONFIG_SPL_BUILD

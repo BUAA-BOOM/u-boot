@@ -1878,10 +1878,11 @@ config CMD_PLAYMEDIA
 	  This provides basic access to the JPEG Decoder, FB and I2S Cotnroller.
 	  The main feature is to allow user playing an video
 
-config CMD_TESTMB
-	bool "mailboxtest"
+config CMD_PLAYSLIDE
+	bool "playslide"
+	select SSCANF
 	help
-	  This provides basic test of loongarch mailbox.
+	  This provides slides playing ability.
 
 if CMD_PSTORE
 

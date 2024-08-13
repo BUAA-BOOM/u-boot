@@ -59,8 +59,8 @@ struct fb_ip_ctl
     |-------------------------|  0M == 0x0F00_0000 == 240M
 */
 // FRAMEBUFFER 必须 4k 对齐
-uint32_t frame_size_y, frame_size_x, dec_color_mode;
-uint32_t framebuffer_size = (2 * 1024 * 1024);
+static uint32_t frame_size_y, frame_size_x, dec_color_mode;
+static uint32_t framebuffer_size = (2 * 1024 * 1024);
 #define FRAMEBUFFER_START (0x0F000000)
 /*
     File Format:
@@ -128,7 +128,7 @@ static void i2s_play_one_frame(uint32_t abuf_ptr) {
 static int play_one_frame(int fb_num)
 {
     uint32_t vbuf_ptr = FRAMEBUFFER_START + framebuffer_size * fb_num;
-    uint32_t abuf_ptr = ab_array[fb_num];
+    uint32_t abuf_ptr = (uint32_t) ab_array[fb_num];
     i2s_play_one_frame(abuf_ptr);
     fb_play_one_frame(vbuf_ptr);
     return 0;
@@ -151,7 +151,7 @@ static int decode_one_frame(int frame_size,
     // 配置 decode ip 的地址
     decode_ctl->src = ((uint32_t)jpeg_file_ptr) & 0x1fffffff;
     decode_ctl->dst = FRAMEBUFFER_START + framebuffer_size * fb_num;
-    decode_ctl->stride = 1280 * (dec_color_mode ? 3 : 2); // FIXED 1280x720p @ 16bits, but resolution might be various.
+    decode_ctl->stride = frame_size_x * (dec_color_mode ? 3 : 2); // FIXED 1280x720p @ 16bits, but resolution might be various.
 
     // 配置开始 decode ip 的解码
     decode_ctl->iocen = 1 | ((dec_color_mode & 1) << 1); // 打开中断输出，清理旧的中断
@@ -159,7 +159,7 @@ static int decode_one_frame(int frame_size,
     // printf("decoder_mmio %x %x %x\n", decode_ctl->src, decode_ctl->dst, decode_ctl->ctrl, decode_ptr);
 
     // 音频数据指针写入到音频指针缓冲区
-    ab_array[fb_num] = ((uint32_t)(jpeg_file_ptr + padding(vframe_size))) & 0x1fffffff;
+    ab_array[fb_num] = (uint32_t *)(((uint32_t)(jpeg_file_ptr + padding(vframe_size))) & 0x1fffffff);
     return 0;
 }
 
@@ -301,10 +301,14 @@ static int do_playmedia(struct cmd_tbl *cmdtp, int flag, int argc, char *const a
 	sscanf(argv[1], "0x%x", &location);
     sscanf(argv[2], "%d", &fps);
     sscanf(argv[3], "%d", &dec_color_mode);
-    frame_size_x = 1280;
-    frame_size_y = 720;
+    frame_size_x = 640;
+    frame_size_y = 480;
+    if(argc == 6) {
+        sscanf(argv[4], "%d", &frame_size_x);
+        sscanf(argv[5], "%d", &frame_size_y);
+    }
     framebuffer_size = frame_size_x * frame_size_y * (dec_color_mode ? 3 : 2);
-    framebuffer_size = ((framebuffer_size & 0xfff) ? 1 : 0) + framebuffer_size >> 12;
+    framebuffer_size = ((framebuffer_size & 0xfff) ? 1 : 0) + (framebuffer_size >> 12);
     framebuffer_size <<= 12; // 4k align
 	if(location < 0xa0000000) {
 		printf("Location should'nt be lower than 0xa0000000.\n");
@@ -329,14 +333,16 @@ struct vcfg_t{
     uint32_t hcfg[4];
     uint32_t vcfg[4];
 };
-static uint32_t support_resolution[] = {1080,720,480}; // 数组需保持有序
-static struct vcfg_t support_cfg[] = {
+uint32_t support_resolution[] = {1080,1024,720,480,600}; // 数组需保持有序
+struct vcfg_t support_cfg[] = {
     {{32,80,1920,48},{5,13,1080,3}},
+    {{32,80,1024,48},{5, 6,576, 3}},
     {{32,80,1280,48},{5,13,720 ,3}},
-    {{32,80,640 ,48},{5,13,480 ,3}}
+    {{32,80,640 ,48},{5,13,480 ,3}},
+    {{32,80,800 ,48},{4,11,600 ,3}}
 };
 
-static int set_fb_args(struct vcfg_t use_cfg, int color_mode) {
+int set_fb_args(struct vcfg_t use_cfg, int color_mode) {
     fb_ctl = (void*) 0x9d0d0000;
     uint32_t iters = 0;
     while(fb_ctl->status & 2) {
@@ -382,7 +388,7 @@ static int set_fb_addr(uint32_t start_addr) {
 
 static int do_setfb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]) {
     if(argc < 3) {
-		printf("Usage: setfb <1080p/720p/480p> <color-mode>\n");
+		printf("Usage: setfb <1080p/1024p/720p/480p/600p> <color-mode>\n");
 		return 0;
     }
     int i;
