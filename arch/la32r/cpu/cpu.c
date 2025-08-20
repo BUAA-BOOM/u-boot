@@ -30,7 +30,18 @@ int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
 
 int print_cpuinfo(void)
 {
-	printf("Greeting from lain soc!\n");
+  printf("   ___    ___    ___    ___  __  __  \n");
+  printf("  | _ )  / _ \\  / _ \\  / _ \\|  \\/  | \n");
+  printf("  | _ \\ | (_) || (_) || (_) | |\\/| | \n");
+  printf("  |___/  \\___/  \\___/  \\___/|_|__|_| \n");
+  printf("_|\"\"\"\"\"_|\"\"\"\"\"_|\"\"\"\"\"_|\"\"\"\"\"_|\"\"\"\"\"| \n");
+  printf("\"`-0-0-'`-0-0-'`-0-0-'`-0-0-'`-0-0-' \n");
+  printf("   ___   _   _   ___    ___          \n");
+  printf("  | _ ) | | | | /   \\  /   \\         \n");
+  printf("  | _ \\ | |_| | | - |  | - |         \n");
+  printf("  |___/  \\___/  |_|_|  |_|_|         \n");
+  printf("_|\"\"\"\"\"_|\"\"\"\"\"_|\"\"\"\"\"_|\"\"\"\"\"|       \n");
+  printf("\"`-0-0-'`-0-0-'`-0-0-'`-0-0-'     \n");
 	return 0;
 }
 int arch_cpu_init(void)
