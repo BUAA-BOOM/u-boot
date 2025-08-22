@@ -199,7 +199,7 @@ static struct la_slides_frame_desc* descs;
 static inline uint32_t init_slide(void *binary) {
     void *base = binary;
     header = &header_static;
-    header->display_mode = 1024;
+    header->display_mode = 480;
     header->frame_count = 0;
     // descs = (void*)(header + 1);
     // printf("Header in %x, desc in %x\n", (uint32_t)header, (uint32_t)descs);
@@ -257,14 +257,29 @@ static inline int squart_interpole(int total, int now, int value) {
     // f(0) = 0 * value, f(1) = 1 * value, f(1)' = 0;
     // f(t) = 2t - t^2
     // f(t) = 2 * now / total - now * now / (total * total)
-    // f(t) * value = 2 * now * value / total - (now >> 16) * (now >> 16) * value / ((total >> 16) * (total >> 16)) 
+    // f(t) * value = 2 * now * value / total - (now >> 16) * (now >> 16) * value / ((total >> 16) * (total >> 16))
     // In case of over flow, do a right shift.
     // uint32_t ret = 2 * now * value / total;
     // uint32_t now_2_hi = ((unsigned long long)now * now) >> 32;
     // uint32_t total_2_hi = ((unsigned long long)total * total) >> 32;
     // ret -= (now_2_hi >> 10) * value / (total_2_hi >> 10);
     float t = (float)now / (float)total;
-    float v = (float)value * (2.0f * t - t * t);
+    // float v = (float)value * (2.0f * t - t * t);
+    if (t < (1/2.75)) {
+        return 7.5625*t*t;
+    }
+    else if (t < (2/2.75)) {
+        t -= (1.5/2.75);
+        return 7.5625*t*t + 0.75;
+    } 
+    else if (t < (2.5/2.75)) {
+        t -= (2.25/2.75);
+        return 7.5625*t*t + 0.9375;
+    } 
+    else {
+        t -= (2.625/2.75);
+        return 7.5625*t*t + 0.984375;
+    }
     return (int) v;
 }
 
@@ -289,7 +304,7 @@ static inline void display_one_page(void *binary, int index, int dir, int ticks)
     printf("Page%d info: offset=%x, size=%d, dir=%d\n",index, descs[index].frame_offset, descs[index].frame_size, dir);
     decode_one_frame(descs[index].frame_size, binary + descs[index].frame_offset, 1 + dir);
     wait_decode();
-    
+
     // 开始播放插值动画，读取时间，计算，动画播放。
     uint32_t start_time = get_tick();
     uint32_t last_ptr = 0;
